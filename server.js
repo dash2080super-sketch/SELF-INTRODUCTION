@@ -1,11 +1,16 @@
 import express from 'express';
 import cookieParser from 'cookie-parser';
+import fs from 'node:fs';
+import path from 'node:path';
+import crypto from 'node:crypto';
 import { config, assertConfig } from './src/config.js';
 import { initDB } from './src/db.js';
 import { loadModules, findModule, publicMeta } from './src/modules.js';
 import { createCrudRouter } from './src/crud.js';
 import { authGuard, handleLogin, handleLogout } from './src/auth.js';
 import { kvRouter } from './src/kv.js';
+import { financeRouter } from './src/finance-api.js';
+import { dividendRouter } from './src/dividend-api.js';
 
 assertConfig();
 
@@ -36,6 +41,8 @@ app.get('/api/me', (req, res) => res.json({ ok: true }));
 app.get('/api/modules', (req, res) => res.json({ modules: publicMeta(modules) }));
 
 app.use('/api/kv', kvRouter);
+app.use('/api/finance', financeRouter);
+app.use('/api/dividend', dividendRouter);
 
 app.use('/api/m/:moduleId', (req, res, next) => {
   const mod = findModule(modules, req.params.moduleId);
@@ -58,9 +65,41 @@ app.use('/api/m/:moduleId', (req, res, next) => {
   });
 });
 
+// ---- 静态资源版本号 ----
+// 按 public/ 下所有文件的 mtime 算个短哈希，注入到首页的 __ASSET_V__ 占位符。
+// 这样任何前端文件一改，URL 就变，浏览器不可能再吃到旧的 JS/CSS。
+// 不需要手动 bump 版本号，重启服务即自动生效。
+function computeAssetVersion() {
+  const h = crypto.createHash('sha1');
+  const walk = (dir) => {
+    for (const e of fs.readdirSync(dir, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
+      if (e.name.startsWith('.')) continue;
+      const p = path.join(dir, e.name);
+      if (e.isDirectory()) walk(p);
+      else h.update(`${e.name}:${fs.statSync(p).mtimeMs};`);
+    }
+  };
+  try {
+    walk(config.publicDir);
+  } catch (e) {
+    console.warn('[billboard] 计算资源版本失败:', e.message);
+  }
+  return h.digest('hex').slice(0, 8);
+}
+const ASSET_V = computeAssetVersion();
+
+// 首页/登录页走这里，把占位符替换掉再发出去（放在 static 之前）
+app.get(/^\/index\.html$/, (req, res, next) => {
+  fs.readFile(path.join(config.publicDir, 'index.html'), 'utf8', (err, html) => {
+    if (err) return next(err);
+    res.set('Cache-Control', 'no-cache').type('html').send(html.replaceAll('__ASSET_V__', ASSET_V));
+  });
+});
+
 app.use(
   express.static(config.publicDir, {
-    maxAge: config.isProd ? '1h' : 0,
+    // 个人小站，改动频繁：不设强缓存，靠 ETag 协商（304）省流量
+    maxAge: 0,
     index: false,
     etag: true,
   })

@@ -99,7 +99,9 @@ function buildTabs() {
 async function loadRenderer(id) {
   if (renderers.has(id)) return renderers.get(id);
   try {
-    await import(`/js/modules/${id}.js`);
+    // 带上资源版本号，避免浏览器缓存住旧模块（版本由服务端按 public/ 的 mtime 算）
+    const v = window.__ASSET_V__ || '0';
+    await import(`/js/modules/${id}.js?v=${v}`);
   } catch (e) {
     console.warn(`模块 ${id} 没有前端渲染器，使用默认`, e);
   }

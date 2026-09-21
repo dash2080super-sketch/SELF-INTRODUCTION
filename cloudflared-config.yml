@@ -1,0 +1,5 @@
+url: http://127.0.0.1:3000
+tunnel: 538a181e-56b9-47c4-846c-b16d6ccb941e
+credentials-file: /root/.cloudflared/538a181e-56b9-47c4-846c-b16d6ccb941e.json
+# 更新交给 apt(cloudflared 官方源)，关掉自带的自动更新
+no-autoupdate: true

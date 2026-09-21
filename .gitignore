@@ -3,3 +3,7 @@ data/
 .env
 *.log
 .DS_Store
+
+# 临时调试产物（探针输出、脚本备份），不进仓库
+_*.txt
+*.bak-*

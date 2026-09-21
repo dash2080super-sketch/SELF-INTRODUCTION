@@ -8,7 +8,8 @@
 | 💡 随想 | 一闪而过的念头、小事、半成品想法 |
 | A Word List | 不会的词，记到掌握为止 |
 | ❝ Sentences | 难啃的句子 + 值得偷走的句子 |
-| ¥ Finance | **占位**，结构待定，先有草稿区 |
+| ¥ Finance | 全球行情看板：情绪 / 波动率 / 股指 / 利率 / 汇率商品 |
+| 📉 回撤连跌 | 七大股指近三个月的每日收盘、回撤、连涨连跌天数 |
 
 技术栈：Node + Express + SQLite（单文件数据库），没有前端构建步骤，没有 Docker。
 常驻内存约 40–70 MB，1 vCPU / 512MB 的 DigitalOcean 小机完全带得动。
@@ -369,4 +370,6 @@ bash scripts/deploy.sh                  # 更新代码后一键重启（git 部�
 - **鉴权**：密码散列存服务端，会话是 HMAC 签名的 httpOnly cookie，默认 30 天有效（`SESSION_DAYS`）。连续输错 8 次会锁 15 分钟。
 - **没有注册/多用户**：就你一个人用，密码只有一个。
 - **finance 模块现在是壳子**：指标槽位（QQQ/NDX、VXN、10Y 美债、WTI）先摆着，草稿区存在 `kv` 表。等你想清楚要看什么，改 `modules/finance.js` + `public/js/modules/finance.js` 就行，其他模块不受影响。
+- **回撤连跌（drawdown）模块**：日线来自 Yahoo Finance（`^GDAXI ^FCHI ^FTSE ^NDX ^GSPC ^N225 1306.T`），后端 30 分钟缓存一份，另存 `data/drawdown-cache.json`（重启后直接读盘，不白打上游）。回撤 / 连涨连跌是前端按所选窗口（10 日 / 1 / 2 / 3 个月）现算的，切窗口不再打上游。TOPIX 因 Yahoo 没有指数代码，用 `1306.T` 东证 ETF 代理，点位不等于指数本身，但涨跌幅、回撤、连涨跌结论一致。
+  - 本机（Windows）访问 Yahoo 必须走代理：在 `.env` 里写 `DRAWDOWN_PROXY=http://127.0.0.1:10808`；VPS 上直连即可，不要这一行。代理不通时会自动退回直连。
 - 前端是原生 JS，没有构建步骤，改完刷新页面即生效（浏览器强缓存时 Ctrl+F5）。

@@ -375,3 +375,81 @@ main:has(.fin-zone){max-width:1360px}
   .dv-grid{grid-template-columns:repeat(3,1fr)}
   .dva-sum{margin-left:0; width:100%}
 }
+
+/* ============ drawdown 回撤与连跌 ============ */
+/* 卡片多、表格宽，这个面板单独放宽一点 */
+main:has(.dd-grid){max-width:1400px}
+
+.dd-bar{display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:14px}
+.dd-seg{display:inline-flex; background:var(--surface-2); border:1px solid var(--line-2);
+  border-radius:9px; padding:2px; gap:2px}
+.dd-seg button{border:0; background:transparent; color:var(--ink-2); font:inherit; font-size:13px;
+  padding:5px 11px; border-radius:7px; cursor:pointer}
+.dd-seg button.on{background:var(--surface); color:var(--ink); font-weight:600;
+  box-shadow:0 1px 2px rgba(20,24,31,.08)}
+.dd-upd{font-size:12px; color:var(--muted)}
+
+.dd-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(290px,1fr)); gap:12px}
+.dd-card{background:var(--surface); border:1px solid var(--line); border-radius:var(--radius);
+  padding:14px 15px 13px; box-shadow:var(--shadow)}
+.dd-top{display:flex; align-items:baseline; gap:7px; flex-wrap:wrap}
+.dd-name{font-size:15px; font-weight:650}
+.dd-cn{font-size:12px; color:var(--muted)}
+.dd-px{display:flex; align-items:baseline; gap:9px; margin:9px 0 1px}
+.dd-num{font-size:25px; font-weight:650; letter-spacing:-.02em; font-variant-numeric:tabular-nums}
+.dd-chg{font-size:14px; font-weight:600; font-variant-numeric:tabular-nums}
+.dd-asof{font-size:11.5px; color:var(--muted); margin-bottom:9px}
+.dd-stale{color:var(--warn)}
+.dd-spark{display:block; width:100%; height:46px; margin:2px 0 11px}
+.dd-kv{display:grid; grid-template-columns:1fr 1fr; gap:8px 10px; padding-top:11px;
+  border-top:1px solid var(--line-2)}
+.dd-kv .k{font-size:11.5px; color:var(--muted)}
+.dd-kv .v{font-size:14px; font-weight:600; font-variant-numeric:tabular-nums}
+.dd-streak{margin-top:11px; display:flex; align-items:center; gap:8px; flex-wrap:wrap}
+.dd-badge{font-size:13px; font-weight:700; border-radius:7px; padding:4px 10px; font-variant-numeric:tabular-nums}
+.dd-badge.up{background:#fdecec; color:var(--up)}
+.dd-badge.down{background:#e7f5ed; color:var(--down)}
+.dd-badge.flat{background:var(--surface-2); color:var(--ink-2)}
+.dd-cum{font-size:12.5px; font-variant-numeric:tabular-nums}
+
+.dd-sec{margin-top:22px}
+.dd-sec h3{margin:0 0 3px; font-size:15px; font-weight:650}
+.dd-hint{font-size:12.5px; color:var(--muted); margin-bottom:10px}
+.dd-tablewrap{background:var(--surface); border:1px solid var(--line); border-radius:var(--radius);
+  box-shadow:var(--shadow); overflow:auto; max-height:520px}
+.dd-table{border-collapse:separate; border-spacing:0; width:100%; font-variant-numeric:tabular-nums}
+.dd-table th,.dd-table td{padding:7px 10px; text-align:right; white-space:nowrap; font-size:13px}
+.dd-table thead th{position:sticky; top:0; background:var(--surface-2); border-bottom:1px solid var(--line);
+  font-size:12px; color:var(--ink-2); font-weight:600; z-index:2}
+.dd-table thead th:first-child,.dd-table tbody th{position:sticky; left:0; text-align:left;
+  background:var(--surface-2); z-index:1}
+.dd-table thead th:first-child{z-index:3}
+.dd-table tbody th{border-right:1px solid var(--line-2); font-weight:500; color:var(--ink-2); font-size:12.5px}
+.dd-table td{border-bottom:1px solid var(--line-2)}
+.dd-table tbody tr:hover td{background:var(--surface-2)}
+.dd-p{font-weight:600}
+.dd-c{display:block; font-size:11.5px; font-weight:500}
+.dd-na{color:#c9ccd2}
+
+.dd-strip{background:var(--surface); border:1px solid var(--line); border-radius:var(--radius);
+  box-shadow:var(--shadow); padding:4px 15px 12px}
+.dd-row{display:flex; align-items:center; gap:12px; padding:8px 0; border-bottom:1px solid var(--line-2)}
+.dd-row:last-child{border-bottom:0}
+.dd-rn{width:104px; font-size:13px; font-weight:600; flex:none}
+.dd-sq{display:flex; gap:3px; flex-wrap:nowrap; overflow:hidden}
+.dd-sq i{width:13px; height:13px; border-radius:3px; display:block; flex:none}
+.dd-sq i.cur{box-shadow:0 0 0 1.5px var(--ink)}
+.dd-lb{font-size:12.5px; font-weight:600; font-variant-numeric:tabular-nums; margin-left:auto; flex:none}
+.dd-legend{display:flex; gap:14px; align-items:center; font-size:12px; color:var(--muted); margin-top:9px}
+.dd-legend i{width:11px; height:11px; border-radius:3px; display:inline-block; margin-right:5px; vertical-align:-1px}
+
+.dd-note{margin-top:22px; background:var(--surface); border:1px solid var(--line);
+  border-radius:var(--radius); padding:14px 16px; font-size:12.5px; color:var(--ink-2); line-height:1.75}
+.dd-note b{color:var(--ink)}
+.dd-note ul{margin:6px 0 0; padding-left:18px}
+
+@media (max-width:760px){
+  .dd-rn{width:76px; font-size:12px}
+  .dd-sq i{width:11px; height:11px}
+  .dd-grid{grid-template-columns:1fr}
+}

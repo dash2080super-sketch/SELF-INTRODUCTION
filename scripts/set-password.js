@@ -72,10 +72,13 @@ async function main() {
   if (pw.length < 6) console.warn('⚠️  密码偏短，建议 10 位以上。');
 
   const hash = bcrypt.hashSync(pw, 10);
-  const secret = crypto.randomBytes(32).toString('base64url');
 
   let existing = '';
   if (fs.existsSync(ENV_PATH)) existing = fs.readFileSync(ENV_PATH, 'utf8');
+
+  // 已有 SESSION_SECRET 就沿用，免得改个密码把所有已登录设备都踢下线
+  const prevSecret = /^SESSION_SECRET=(\S+)/m.exec(existing);
+  const secret = prevSecret ? prevSecret[1] : crypto.randomBytes(32).toString('base64url');
 
   const set = (text, key, val) => {
     const re = new RegExp(`^${key}=.*$`, 'm');

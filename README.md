@@ -47,24 +47,40 @@ Web Console 不能上传文件，所以代码得先有个"下载地址"。两条
 
 ```powershell
 cd C:\Users\Administrator\WorkBuddy\2026-09-21-09-09-09\billboard
-git remote add origin https://github.com/<你的用户名>/billboard.git
+git remote add origin https://github.com/dash2080super-sketch/billboard.git   # ← 换成你自己的仓库地址
 git push -u origin main
 ```
+
+> **README 里的 `<...>` 都是占位符，必须替换成真实值再执行**——直接粘带尖括号的命令，
+> 会把 `https://github.com/<你的用户名>/billboard.git` 这个假地址存进 remote，之后
+> 再 add 就会报 `error: remote origin already exists`。
 
 GitHub 网页上先建一个 **Private 空仓库**（不要勾 README/LICENSE）。
 push 时要登录：用户名填 GitHub 用户名，**密码处填 Personal Access Token**（GitHub → Settings → Developer settings → Personal access tokens → Fine-grained → 只给这一个仓库 Contents: 读写）。开了 2FA 必须用 token，不能填登录密码。
 
-**路 B：本机 scp 直传**（能开终端的话最快）
+**常见报错**：
+
+| 报错 | 原因 | 处理 |
+|---|---|---|
+| `remote origin already exists` | 之前加过（哪怕是错的地址） | `git remote set-url origin <正确地址>` |
+| `schannel: server closed abruptly` / 卡住不动 | 本机到 `github.com:443` 被阻断（代理把 github 走了直连） | 在代理软件里把 `github.com` 改为走代理，或开全局模式；也可改用 SSH over 443：`git remote set-url origin ssh://git@ssh.github.com:443/dash2080super-sketch/billboard.git`（需先在 GitHub 加 SSH 公钥） |
+| `failed to push some refs` / `non-fast-forward` | 远端仓库不是空的 | `git push -u origin main --force`（确认远端内容不要了再用） |
+| 干脆上不去 GitHub | — | 换 Gitee 建私有仓库，把上面地址换成 gitee 的即可，服务器端照样 `git clone` |
+
+**路 B：本机 scp 直传**（能开终端的话最快，本机到 GitHub 不通时也是首选）
+
+用 `tar` 而不是 `zip`——Windows 的 `Compress-Archive` 生成的反斜杠路径会让 Linux 的 `unzip` 报警告。
 
 ```powershell
-Compress-Archive -Path .\billboard\* -DestinationPath billboard.zip
-scp billboard.zip root@<IP>:/tmp/
+cd C:\Users\Administrator\WorkBuddy\2026-09-21-09-09-09
+tar -czf billboard.tar.gz -C .\billboard --exclude=node_modules --exclude=.git --exclude=data --exclude=.env .
+scp billboard.tar.gz root@<IP>:/tmp/
 ```
 
 然后在 Console 里：
 
 ```bash
-apt-get install -y -qq unzip && mkdir -p /opt/billboard && unzip -o /tmp/billboard.zip -d /opt/billboard
+mkdir -p /opt/billboard && tar -xzf /tmp/billboard.tar.gz -C /opt/billboard
 ```
 
 ### 第 1 步：打开控制台
@@ -89,10 +105,12 @@ apt-get update -qq && apt-get install -y -qq ca-certificates curl gnupg && curl 
 路 A（私有仓库会问用户名/密码，密码填 PAT）：
 
 ```bash
-git clone https://github.com/<你的用户名>/billboard.git /opt/billboard
+git clone https://github.com/dash2080super-sketch/billboard.git /opt/billboard
 ```
 
-嫌 PAT 麻烦就把仓库临时改成 Public，装完再改回 Private。
+（地址换成你自己的；嫌 PAT 麻烦就把仓库临时改成 Public，装完再改回 Private。）
+
+服务器在新加坡，访问 GitHub 通常比你在国内快，所以「本机推不上去」不代表「服务器拉不下来」。
 
 ### 第 4 步：一键安装
 
@@ -220,20 +238,56 @@ sudo systemctl reload caddy
 
 ---
 
-## 四、没有域名怎么办
+## 四、外部怎么访问（443 常被占用时的三种走法）
 
-三种选择，按推荐度排：
+默认安装完的状态是：服务只监听 `127.0.0.1:3000`，ufw 只放行 22 和 443，
+所以**外部暂时访问不了**，需要你挑一种打通方式。
 
-1. **用 IP + 端口直接访问**：把 `.env` 里 `HOST=0.0.0.0`，放行防火墙端口，浏览器开 `http://<IP>:3000`。
-   注意这是明文 HTTP，公共 WiFi 下密码会被看到——至少用 ufw 只放行你自己的出口 IP：
-   ```bash
-   sudo ufw allow from <你的公网IP> to any port 3000
-   sudo ufw enable
-   ```
-2. **SSH 隧道**（最省事也最安全，不用开端口）：本机执行 `ssh -L 3000:127.0.0.1:3000 root@<IP>`，然后浏览器开 `http://127.0.0.1:3000`。
-3. 买个便宜域名（Cloudflare 上 .xyz 一年不到 10 块），走第二节的 Caddy 方案。
+> 本机（Vic 这台）服务器上 443 已经被 xray 占着，所以下面的方案都不动 443。
 
-> `HOST=0.0.0.0` 且开了 HTTPS 反代时，保持 `NODE_ENV=production`，cookie 的 secure 标记会自动打开。
+### 方案 1：SSH 隧道（推荐，零改动、全程加密）
+
+本机 PowerShell：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\tunnel.ps1
+```
+
+保持窗口开着，浏览器访问 `http://127.0.0.1:3000`。
+
+- 优点：服务器不开放任何新端口，流量全程加密，改密码改代码都不影响
+- 缺点：每次用之前要先开隧道（手机端可用 Termius / JuiceSSH 的端口转发，配置同上）
+- 换服务器：先 `$env:BB_SERVER='root@别的IP'` 再跑脚本
+
+### 方案 2：IP + 端口直连（手机随手记最省事）
+
+服务器上执行：
+
+```bash
+sed -i 's/^HOST=.*/HOST=0.0.0.0/' /opt/billboard/.env
+systemctl restart billboard
+ufw allow from <你自己的公网IP> to any port 3000 proto tcp
+```
+
+然后 `http://<服务器IP>:3000`。**这是明文 HTTP**，所以来源一定要限定成你自己的 IP
+（别用 `Anywhere`）。家里宽带 IP 会变的话，用方案 1 或 3 更稳。
+
+### 方案 3：有域名 → 把 HTTPS 挪到高位端口
+
+443 被 xray 占着，Caddy 就换个端口听，证书照样能自动签（用 80 端口做验证）：
+
+```bash
+bash /opt/billboard/scripts/setup-caddy.sh board.example.com 8443
+ufw allow 80/tcp && ufw allow 8443/tcp
+```
+
+访问 `https://board.example.com:8443`。
+
+更讲究一点：域名交给 Cloudflare 托管（免费），CF 的 443 → 源站 8443，
+这样访问就是干净的 `https://board.example.com`，手机上体验最好。
+
+> 反代场景下 `.env` 里保持 `HOST=127.0.0.1`（Caddy 在同一台机器上转发），
+> `NODE_ENV=production` 会让 cookie 的 secure 标记自动打开。
 
 ---
 

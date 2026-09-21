@@ -2,6 +2,8 @@
 # 在 VPS 上跑一次即可完成安装（需 root）。代码必须已经放在 /opt/billboard。
 #   bash scripts/setup-server.sh
 set -euo pipefail
+export DEBIAN_FRONTEND=noninteractive
+export NEEDRESTART_MODE=a
 APP=/opt/billboard
 
 echo "==> 1/5 检查 Node"
@@ -36,19 +38,30 @@ chown -R billboard:billboard "$APP"
 echo "==> 5/5 systemd 开机自启"
 cp "$APP/scripts/billboard.service" /etc/systemd/system/billboard.service
 systemctl daemon-reload
-systemctl enable --now billboard
-sleep 2
-if systemctl is-active --quiet billboard; then
-  echo "  服务已启动"
-else
-  echo "  启动失败，最近日志："
-  journalctl -u billboard -n 30 --no-pager
-  exit 1
-fi
+systemctl enable billboard >/dev/null 2>&1
 
-echo
-echo "=============================================="
-echo " 安装完成。最后一步：设置登录密码"
-echo "   cd $APP && sudo -u billboard npm run set-password"
-echo " 之后访问 http://<服务器IP>:3000"
-echo "=============================================="
+if [ -f "$APP/.env" ]; then
+  systemctl restart billboard
+  sleep 2
+  if systemctl is-active --quiet billboard; then
+    echo "  服务已启动"
+  else
+    echo "  启动失败，最近日志："
+    journalctl -u billboard -n 30 --no-pager
+    exit 1
+  fi
+  echo
+  echo "=============================================="
+  echo " 安装完成，服务正在运行。访问 http://<服务器IP>:3000"
+  echo " 换密码： cd $APP && sudo -u billboard npm run set-password && systemctl restart billboard"
+  echo "=============================================="
+else
+  echo "  已注册开机自启，但还没设密码（缺 .env），服务暂未启动。"
+  echo
+  echo "=============================================="
+  echo " 安装完成。最后一步：设置登录密码"
+  echo "   cd $APP && sudo -u billboard npm run set-password"
+  echo "   systemctl restart billboard"
+  echo " 之后访问 http://<服务器IP>:3000"
+  echo "=============================================="
+fi

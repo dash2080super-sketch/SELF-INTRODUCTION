@@ -11,6 +11,7 @@ import { authGuard, handleLogin, handleLogout } from './src/auth.js';
 import { kvRouter } from './src/kv.js';
 import { financeRouter } from './src/finance-api.js';
 import { dividendRouter } from './src/dividend-api.js';
+import { dividend50Router } from './src/dividend50-api.js';
 
 assertConfig();
 
@@ -42,6 +43,8 @@ app.get('/api/modules', (req, res) => res.json({ modules: publicMeta(modules) })
 
 app.use('/api/kv', kvRouter);
 app.use('/api/finance', financeRouter);
+// dividend50 放前面：两条前缀都挂在 /api 下，先精确后宽松更省心
+app.use('/api/dividend50', dividend50Router);
 app.use('/api/dividend', dividendRouter);
 
 app.use('/api/m/:moduleId', (req, res, next) => {

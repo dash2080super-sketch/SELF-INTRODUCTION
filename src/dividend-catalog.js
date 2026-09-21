@@ -174,16 +174,19 @@ export function normalizeCode(input) {
   return m ? m[1] : '';
 }
 
-/** 6 位代码 → 腾讯行情用的带前缀代码 */
+/** 6 位代码 → 腾讯行情用的带前缀代码
+ *  ⚠️ 5 开头必须是沪：51xxxx / 56xxxx / 58xxxx 都是上交所 ETF，
+ *     早期写成「非 6/9/8 → 深」会把 515450 打成 sz515450，取数全空。
+ *     A 股股票代码没有 5 开头，所以这条规则对个股无副作用。 */
 export function txPrefix(code) {
-  if (/^(6|9)/.test(code)) return 'sh' + code;
+  if (/^(5|6|9)/.test(code)) return 'sh' + code;
   if (/^8/.test(code)) return 'bj' + code;
   return 'sz' + code;
 }
 
 /** 6 位代码 → 市场中文名 */
 export function marketName(code) {
-  if (/^(6|9)/.test(code)) return '沪';
+  if (/^(5|6|9)/.test(code)) return '沪';
   if (/^8/.test(code)) return '北';
   return '深';
 }

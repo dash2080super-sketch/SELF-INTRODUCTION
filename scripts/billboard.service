@@ -1,0 +1,17 @@
+[Unit]
+Description=Personal Billboard
+After=network.target
+
+[Service]
+Type=simple
+User=billboard
+WorkingDirectory=/opt/billboard
+Environment=NODE_ENV=production
+ExecStart=/usr/bin/node /opt/billboard/server.js
+Restart=on-failure
+RestartSec=5
+# 低配机器上的硬上限，超了自动重启而不是把机器拖垮
+MemoryMax=256M
+
+[Install]
+WantedBy=multi-user.target

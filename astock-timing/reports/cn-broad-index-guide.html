@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>A股宽基被动指数 · 小白上手指南（2026-09-21）</title>
+<script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
+<style>
+  :root{
+    --bg:#f7f8fa; --card:#ffffff; --ink:#1a1d24; --ink2:#4a5160; --ink3:#7d8698;
+    --line:#e3e7ee; --accent:#b8322e; --up:#c0392b; --down:#1e8b5c; --blue:#2f5fa8;
+    --gold:#a8791b; --tag:#eef2f9;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei","Segoe UI",sans-serif;
+    line-height:1.7;font-size:15px;}
+  .wrap{max-width:1100px;margin:0 auto;padding:28px 20px 60px;}
+  header.top{border-bottom:3px solid var(--accent);padding-bottom:14px;margin-bottom:22px;}
+  h1{font-size:26px;margin:0 0 6px;letter-spacing:.5px;}
+  .sub{color:var(--ink3);font-size:13px;}
+  h2{font-size:19px;margin:34px 0 12px;padding-left:11px;border-left:4px solid var(--accent);}
+  h3{font-size:16px;margin:22px 0 8px;color:var(--ink);}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:18px 20px;margin:14px 0;}
+  .tldr{background:#fffaf3;border:1px solid #f0dcb8;border-left:5px solid var(--gold);}
+  .tldr .k{font-weight:700;color:var(--gold);}
+  table{width:100%;border-collapse:collapse;font-size:13.5px;margin:10px 0;}
+  th,td{border:1px solid var(--line);padding:8px 10px;text-align:left;vertical-align:top;}
+  th{background:#f2f5fa;font-weight:600;color:var(--ink2);white-space:nowrap;}
+  td.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap;}
+  tbody tr:nth-child(even){background:#fbfcfe;}
+  .red{color:var(--up);font-weight:600;}
+  .green{color:var(--down);font-weight:600;}
+  .muted{color:var(--ink3);font-size:12.5px;}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+  .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;}
+  .chart{width:100%;height:360px;}
+  .box{border:1px solid var(--line);border-radius:10px;padding:14px 16px;background:var(--card);}
+  .box h4{margin:0 0 6px;font-size:15px;}
+  .tag{display:inline-block;background:var(--tag);color:var(--blue);border-radius:4px;
+    padding:1px 7px;font-size:12px;margin-right:6px;}
+  .tag.g{background:#e8f5ee;color:#1e8b5c;}
+  .tag.r{background:#fbecea;color:#b8322e;}
+  .toggle{display:inline-flex;border:1px solid var(--line);border-radius:6px;overflow:hidden;margin:6px 0 10px;}
+  .toggle button{border:0;background:#fff;padding:5px 14px;cursor:pointer;font-size:13px;color:var(--ink2);}
+  .toggle button.on{background:var(--accent);color:#fff;}
+  .warn{background:#fdf4f4;border:1px solid #f3d2d0;border-left:5px solid var(--up);}
+  .note{background:#f4f8fd;border:1px solid #d9e4f2;border-left:5px solid var(--blue);}
+  ul,ol{padding-left:22px;margin:8px 0;}
+  li{margin:5px 0;}
+  .code{font-family:"SF Mono",Consolas,monospace;font-weight:600;color:var(--ink);}
+  .bignum{font-size:22px;font-weight:700;font-variant-numeric:tabular-nums;}
+  .kv{display:flex;flex-wrap:wrap;gap:10px 26px;}
+  .kv div{min-width:150px;}
+  footer{margin-top:36px;padding-top:16px;border-top:1px solid var(--line);color:var(--ink3);font-size:12.5px;}
+  .disc{margin-top:14px;padding:14px 16px;background:#f6f7f9;border:1px dashed #c9cfda;border-radius:8px;color:var(--ink2);font-size:13px;}
+  @media(max-width:820px){.grid2,.grid3{grid-template-columns:1fr;}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="top">
+  <h1>A股宽基被动指数 · 小白上手指南</h1>
+  <div class="sub">数据截至 2026-09-21（估值数据主用 2026-09-18 收盘）｜ 面向风险偏好偏保守的长期投资者</div>
+</header>
+
+<!-- ============ TL;DR ============ -->
+<div class="card tldr">
+  <div class="k">一句话结论</div>
+  <p style="margin:8px 0 0;font-size:16px;">
+    <strong>小白只需要两只：<span class="code">沪深300（000300）</span> 或 <span class="code">中证A500（000510）</span> 做核心底仓，占你权益仓位的 60%~80%；</strong>
+    想睡得更稳，加一份 <span class="code">中证红利低波（或红利ETF）</span>；手上闲钱的最后一小块再考虑 <span class="code">创业板指（399006）</span>。
+    <span class="code">科创50（000688）</span> 和 <span class="code">中证1000（000852）</span>，小白别碰——它们看起来是"宽基"，实际波动跟押单一赛道差不多。
+  </p>
+  <div class="kv" style="margin-top:14px;">
+    <div><div class="muted">沪深300 PE(TTM)</div><div class="bignum">13.4倍</div><div class="muted">近10年分位 52%~66%</div></div>
+    <div><div class="muted">代表ETF规模</div><div class="bignum">956.8亿</div><div class="muted">沪深300ETF华泰柏瑞 510300</div></div>
+    <div><div class="muted">主流管理+托管费</div><div class="bignum">0.20%/年</div><div class="muted">0.15% + 0.05%，已是地板价</div></div>
+  </div>
+</div>
+
+<!-- ============ 1 ============ -->
+<h2>一、先讲清楚：什么叫"宽基"，小白为什么适合它</h2>
+<div class="card">
+  <p><strong>大白话版：</strong>宽基指数 = "不挑行业、按市值大小一篮子打包"的股票清单。买沪深300，等于一次性买了A股最大的300家公司；买中证1000，等于买了排在301~1300名的1000家中小公司。</p>
+  <p>跟它相对的是两类：</p>
+  <ul>
+    <li><strong>窄基/行业指数</strong>（半导体ETF、白酒ETF、军工ETF）：押一个赛道，涨得猛，跌起来也没底，还会出现"行业整体消失"的风险。</li>
+    <li><strong>主动基金</strong>：业绩取决于基金经理，存在风格漂移、换人、押错赛道三重不确定性，还要付 1.2%~1.5% 的管理费。</li>
+  </ul>
+  <p>宽基对小白的四个好处：<strong>不会归零</strong>（公司退市会自动被调出指数）、<strong>不用盯盘</strong>、<strong>费率极低</strong>（头部产品 0.2%/年，是主动基金的 1/7）、<strong>规则透明</strong>（涨跌就是指数涨跌，不存在"基金经理判断失误"这一项）。</p>
+  <div class="warn card" style="margin:12px 0 0;">
+    <h4 style="margin-top:0;">⚠️ 但"宽基"不等于"稳健"——这是小白最大的错觉</h4>
+    <p style="margin-bottom:0;">沪深300 在 2021-02 到 2024-02 曾经从 5930.91 跌到 3108.35，<strong class="green">跌了 47.6%</strong>；科创50 从 1627.85 跌到 640.35，<strong class="green">跌了 60.7%</strong>。宽基只是"不会死"，不代表"不会腰斩"。定它会涨跌多少的，是<strong>你的持有期限</strong>，不是指数名字。</p>
+  </div>
+</div>
+
+<!-- ============ 2 ============ -->
+<h2>二、主流宽基八个候选，横向摆开看</h2>
+<p class="muted">下表"近10年"区间为 2016-08-31 → 2026-08-31，收益率与回撤基于指数收盘价序列（价格指数，不含分红再投资）实算。</p>
+
+<div class="toggle">
+  <button id="btnChart" class="on" onclick="switchView('chart')">看图形</button>
+  <button id="btnTable" onclick="switchView('table')">查数字</button>
+</div>
+
+<div id="viewChart"><div id="chartPerf" class="chart"></div></div>
+<div id="viewTable" style="display:none;"></div>
+
+<div class="grid2" style="margin-top:16px;">
+  <div class="box"><div id="chartAmp" style="width:100%;height:320px;"></div></div>
+  <div class="box"><div id="chartPe" style="width:100%;height:320px;"></div></div>
+</div>
+<p class="muted">注释：① 科创50 基日为 2019-12-31（不足10年），其长期年化 8.15% 为基日以来约 6.7 年口径；② 中证A500 指数 2024-09 才发布，"近10年"为回溯测算的全收益口径，与价格口径不可直接等同，需核实原文；③ PE 十年分位在不同数据源（申万宏源周报 vs Wind）存在系统性差异，此处取区间。</p>
+
+<!-- ============ 3 ============ -->
+<h2>三、我的分档结论：底仓 / 可选 / 别碰</h2>
+
+<div class="grid3">
+  <div class="box" style="border-top:4px solid #1e8b5c;">
+    <h4><span class="tag g">核心底仓</span>占权益 60%~80%</h4>
+    <p><strong>沪深300（000300）</strong>：A股公认的"市场温度计"，行业最均衡（电子+电新+通信+计算机约37%，金融约19%）。费率最低档、流动性最好、衍生品工具最全。<span class="muted">PE 13.4倍，股息率 2.62%。</span></p>
+    <p><strong>中证A500（000510）</strong>：新一代宽基，按"行业中性+选龙头"取样，覆盖35个二级行业，比沪深300 少一点金融、多一点新兴产业。<span class="muted">PE 16.0倍，机构持有比例约90%（险资主战场）。</span></p>
+    <p class="muted" style="margin-bottom:0;"><strong>怎么选：</strong>两者长期走势高度重合（相关性0.9+），<strong>挑一只就行</strong>，别两只都买。保守取向选沪深300，想多沾一点成长选A500。</p>
+  </div>
+  <div class="box" style="border-top:4px solid #2f5fa8;">
+    <h4><span class="tag">稳一点</span>占权益 10%~30%</h4>
+    <p><strong>中证红利（000922）/ 红利低波</strong>：高股息一篮子，PB 0.83倍（十年分位14%~29%，全市场最低之一），股息率 4.25%。十年维度它的<strong>回撤只有 -30.8%</strong>，是所有宽基里最小的。</p>
+    <p class="muted" style="margin-bottom:0;">注意：它是"类宽基"的策略指数，不是纯市值宽基——但正因为加入了股息/低波筛选，它的持有体验最接近"能拿得住"。</p>
+  </div>
+  <div class="box" style="border-top:4px solid #b8322e;">
+    <h4><span class="tag r">谨慎 / 别碰</span>不超过权益 10%</h4>
+    <p><strong>创业板指（399006）</strong>：十年年化最高（+4.61%），但代价是 <strong class="green">-58.5%</strong> 的十年最大回撤。近52周振幅 51.5%。小仓位可以，重仓会睡不着。</p>
+    <p><strong>中证500 / 中证1000：</strong>中证1000 过去十年价格收益 <strong class="green">-1.28%（负收益）</strong>，回撤 -56.1%。"小盘=高弹性"这个说法，在A股过去十年并不成立。</p>
+    <p style="margin-bottom:0;"><strong>科创50（000688）：</strong>PE 136倍、PB 7.9倍，52周振幅 <strong>80.6%</strong>，成分股中约13~14家亏损。年内涨了23%很诱人，但这是<strong>把宽基买成主题赌注</strong>的典型。</p>
+  </div>
+</div>
+
+<div class="card note">
+  <h4 style="margin-top:0;">🔊 一个反向声音（这条比选指数本身更重要）</h4>
+  <p>现在市场上最流行的叙事是"科技牛、科创50年内+23%、半导体算力无敌"。但看两个数：科创50 的 ROE 大约只有纳指100 的 <strong>1/4（约7% vs 约30%）</strong>，而 PE 是它的 4 倍以上。<span class="muted">（来源：雪球个人投研笔记整理引 Wind 数据，2026-09-20，非一手来源，需核实原文）</span></p>
+  <p style="margin-bottom:0;"><strong>"过去五年涨得最好的"恰恰是"最不该在 2026 年照着买"的。</strong>反过来，过去五年沪深300、上证50 年化是负的（-0.76% / -1.06%），估值却被压在十年中位以下——这才是"新手可以直接买、买了不用天天看"的位置。新手最容易犯的错，就是打开APP按"近一年涨幅排行"选基金。</p>
+</div>
+
+<!-- ============ 4 ============ -->
+<h2>四、具体到产品：买哪只 ETF</h2>
+<p class="muted">规模为基金资产净值口径，2026-09-21；不同平台（净值口径 vs 行情口径）会有差异，此处统一取净值口径。费率 = 年管理费率 + 年托管费率。</p>
+<table>
+  <thead>
+    <tr><th>跟踪指数</th><th>ETF 简称</th><th>代码</th><th class="num">规模(亿元)</th><th class="num">管理+托管费</th><th>备注</th></tr>
+  </thead>
+  <tbody>
+    <tr><td rowspan="4">沪深300<br><span class="muted">000300.SH</span></td>
+        <td>沪深300ETF华泰柏瑞</td><td class="code">510300</td><td class="num">956.8</td><td class="num">0.15%+0.05%</td><td>全市场规模居前的股票ETF，期权唯一现货标的</td></tr>
+    <tr><td>沪深300ETF易方达</td><td class="code">510310</td><td class="num">601.7</td><td class="num">0.15%+0.05%</td><td>跟踪误差小</td></tr>
+    <tr><td>沪深300ETF华夏</td><td class="code">510330</td><td class="num">410.9</td><td class="num">0.15%+0.05%</td><td>机构持仓占比高</td></tr>
+    <tr><td>沪深300ETF嘉实</td><td class="code">159919</td><td class="num">373.0</td><td class="num">0.15%+0.05%</td><td>深市账户方便</td></tr>
+
+    <tr><td rowspan="4">中证A500<br><span class="muted">000510.SH</span></td>
+        <td>A500ETF华泰柏瑞</td><td class="code">563360</td><td class="num">316.2</td><td class="num">0.15%+0.05%</td><td>同类第一，2026-01 纳入互联互通</td></tr>
+    <tr><td>A500ETF南方</td><td class="code">159352</td><td class="num">303.1</td><td class="num">0.15%+0.05%</td><td>流动性好</td></tr>
+    <tr><td>A500ETF易方达</td><td class="code">159361</td><td class="num">261.4</td><td class="num">0.15%+0.05%</td><td>—</td></tr>
+    <tr><td>中证A500ETF国泰</td><td class="code">159338</td><td class="num">240.7</td><td class="num">0.15%+0.05%</td><td>—</td></tr>
+
+    <tr><td rowspan="2">红利 / 红利低波</td>
+        <td>红利低波ETF华泰柏瑞</td><td class="code">512890</td><td class="num">313.3</td><td class="num">0.15%+0.05%</td><td>红利低波主题规模最大</td></tr>
+    <tr><td>红利ETF华泰柏瑞</td><td class="code">510880</td><td class="num">223.9</td><td class="num">0.15%+0.05%</td><td>A股首只红利指数基金</td></tr>
+
+    <tr><td>上证50<br><span class="muted">000016.SH</span></td>
+        <td>上证50ETF华夏</td><td class="code">510050</td><td class="num">199.3</td><td class="num">0.15%+0.05%</td><td>估值最低的核心蓝筹，股息率3.21%</td></tr>
+
+    <tr><td>中证500<br><span class="muted">000905.SH</span></td>
+        <td>中证500ETF南方</td><td class="code">510500</td><td class="num">383.0</td><td class="num">0.15%+0.05%</td><td>同类第一</td></tr>
+
+    <tr><td>创业板指<br><span class="muted">399006.SZ</span></td>
+        <td>创业板ETF易方达</td><td class="code">159915</td><td class="num">470.8</td><td class="num">0.15%+0.05%</td><td>同类第一；注意 159949 是创业板50，指数不同</td></tr>
+
+    <tr><td>科创50<br><span class="muted">000688.SH</span></td>
+        <td>科创50ETF华夏</td><td class="code">588000</td><td class="num">701.1</td><td class="num">0.15%+0.05%</td><td class="red">小白不推荐（PE 136倍）</td></tr>
+  </tbody>
+</table>
+
+<h3>三条实操规则</h3>
+<ol>
+  <li><strong>场内 vs 场外。</strong>有股票账户 → 买场内ETF（<span class="code">510300</span> 这种六位代码），交易免印花税，只剩券商佣金（通常万分之几，可谈到万0.5以下）；没有股票账户或想自动扣款 → 买<b>联接基金</b>（支付宝/天天基金等场外）。</li>
+  <li><strong>A类 vs C类。</strong>打算持有<strong>超过1年</strong>选 A 类（一次性申购费，长期摊薄少）；<strong>1年以内</strong>选 C 类（免申购费但按日收销售服务费，通常0.2%~0.4%/年）。定投三年以上，A 类。</li>
+  <li><strong>费率陷阱。</strong>同一指数可能有30只ETF，费率天差地别。沪深300 里就有 <span class="code">515330</span>（天弘）、<span class="code">510390</span>（平安）、<span class="code">510360</span>（广发）仍在收 <strong>0.50%+0.10%</strong>；上证50 里 <span class="code">510800</span>/<span class="code">510850</span>/<span class="code">510600</span> 也是 0.50%。<strong>买之前一定先在基金档案页看一眼管理费</strong>，别只看名字。</li>
+</ol>
+
+<div class="card">
+  <h3 style="margin-top:0;">一个保守型参考骨架（可直接照抄比例，不是操作建议）</h3>
+  <table>
+    <thead><tr><th>仓位</th><th>品种</th><th>建议比例（占权益部分）</th><th>作用</th></tr></thead>
+    <tbody>
+      <tr><td>压舱石</td><td>沪深300 或 中证A500（<span class="code">510300</span> / <span class="code">563360</span>）</td><td class="num">50%~60%</td><td>跟住市场平均，不踏空</td></tr>
+      <tr><td>减震器</td><td>红利低波ETF（<span class="code">512890</span>）或 上证50（<span class="code">510050</span>）</td><td class="num">20%~30%</td><td>回撤小、有股息现金流</td></tr>
+      <tr><td>弹性层</td><td>创业板ETF（<span class="code">159915</span>）</td><td class="num">0~10%</td><td>提高收益上限，也可完全不要</td></tr>
+      <tr><td>现金/债</td><td>短债基金 / 货币基金</td><td class="num">视整体资产而定</td><td>让你在-30%时还有钱补仓</td></tr>
+    </tbody>
+  </table>
+  <p class="muted" style="margin-bottom:0;">再平衡：每半年或每年一次，任一档偏离目标 <strong>±5个百分点</strong> 才动手，一年不超过两次。ETF 交易成本很低，但也别每月调——过度调仓不会提高收益，只会增加出错机会。</p>
+</div>
+
+<!-- ============ 5 ============ -->
+<h2>五、现在这个位置（2026-09-21）怎么看</h2>
+<div class="card">
+  <ul>
+    <li><strong>估值：</strong>沪深300 PE 13.4倍（十年分位 52%~66%），上证50 PE 10.7倍（分位 54%~56%，且近四周从 69.7% 快速回落到 54%），股息率/十年国债 ≈ 1.57 倍 —— <strong>大盘股相对债券仍在性价比占优区间</strong>。</li>
+    <li><strong>另一头：</strong>科创50 PE 135.8倍（分位 78%~81%）、PB 7.9倍（分位 85%~94%），中证500 PE 33.7倍（分位 61%~79%）—— <strong>小盘成长的估值已经不便宜</strong>。</li>
+    <li><strong>环境：</strong>2026-09-17 美联储加息25bp至 3.75%~4.00%（2023年7月以来首次），美国10年期国债收益率站上 5.00%，美元破100；国内十年国债反而降到 1.67% 附近，内外利率分化。加息落地后A股走了"利空出尽"剧本：本周科创50 +6.39%、中证500 +2.89%，而红利 -2.12% 补跌。</li>
+    <li><strong>我的倾向：</strong>对用手闲置资金、能放 3 年以上的保守投资者，<strong>沪深300/A500 现在是"可以开始定投"的位置，而不是"必须等更便宜"的位置</strong>；同时<strong>不追</strong>年内已涨23%的科创50。真正致命的不是买贵一点，是<strong>在跌到 -30% 时因为扛不住而卖出</strong>——所以仓位比你选哪只指数重要得多。</li>
+  </ul>
+</div>
+
+<!-- ============ 6 ============ -->
+<h2>六、小白最容易踩的五个坑</h2>
+<div class="card">
+  <ol>
+    <li><strong>按近一年涨幅排行选指数。</strong>上面已经说过，这是反向指标。选中长期，看估值和你的持有期限。</li>
+    <li><strong>买"增强"当买被动。</strong>名字带"增强/指增"的ETF管理费通常是 0.50%~0.80%，那是主动策略，不是被动。<span class="code">562070</span>（沪深300指增ETF华宝）管理费 0.80%，<span class="code">512370</span>（A500增强ETF华夏）0.50%。</li>
+    <li><strong>把几只高度重合的指数各买一点以为在分散。</strong>沪深300 + 中证A500 + 上证50 三者相关性极高，买三只＝买一只加三倍交易次数。真正的分散是<strong>加债券/黄金/现金</strong>，不是多买几只A股指数。</li>
+    <li><strong>定投中途停扣。</strong>定投的全部价值在于"低位也扣"。一跌就停扣，等于自动实现了高买低避。</li>
+    <li><strong>不分红担心、涨了就想加。</strong>宽基是"被动持有"工具，它没有"必须加仓"的理由。加仓只应该因为<strong>你原定的规则被触发</strong>（如定期、或偏离目标比例），而不是因为心情和新闻。</li>
+  </ol>
+</div>
+
+<!-- ============ 来源 ============ -->
+<h2>数据来源与时点</h2>
+<div class="card muted">
+  <ul>
+    <li>ETF 规模 / 代码 / 费率：ETF规模排名与个股行情数据接口，2026-09-21；基金公告与基金档案页（华泰柏瑞、国泰、易方达等）。</li>
+    <li>指数 PE / PB / 股息率：申万宏源《A股估值及行业中观景气跟踪周报》（截至 2026-09-18）、Wind 估值数据（雪球个人整理，2026-09-18）；第三方指数估值平台（etf.whatsid.me，更新至 2026-09-18）。不同源分位存在差异，文中取区间。</li>
+    <li>十年收益 / 最大回撤 / 52周振幅：基于各指数月线与日线收盘序列实算，区间 2016-08-31 → 2026-08-31（科创50 为基日 2019-12-31 起）。<strong>价格指数口径，不含分红再投资</strong>。</li>
+    <li>全收益口径参考：中证红利全收益近十年年化约 8%~9.4%、沪深300全收益约 5.5%（Wind、中证指数及券商研究公开数据，<strong>非一手来源，需核实原文</strong>）。</li>
+    <li>宏观：FOMC 2026-09-17 决议、美国10年期国债收益率 5.00%（2026-09-18）、国内十年国债 1.67%~1.68%。</li>
+  </ul>
+</div>
+
+<div class="disc">
+  <strong>免责声明</strong>：以上内容基于公开数据和量化分析，仅供参考，不构成投资建议。市场有风险，投资需谨慎。任何投资决策应结合个人风险承受能力、资金状况和投资目标独立判断，必要时咨询持牌专业机构。过往表现不预示未来收益。
+</div>
+
+<footer>生成时间：2026-09-21 · GMT+8 ｜ 文中所有指数与ETF均标注标准代码，请自行核对产品全称与招募说明书后再交易。</footer>
+
+</div>
+
+<script>
+var IDX = [
+  {n:'中证红利', ret:3.68, dd:-30.8, amp:20.6, pe:8.5,  pq:55, dy:4.25, ytd:0.43},
+  {n:'上证50',   ret:2.78, dd:-47.4, amp:14.3, pe:10.7, pq:55, dy:3.21, ytd:-4.77},
+  {n:'沪深300',  ret:3.35, dd:-47.6, amp:15.2, pe:13.4, pq:59, dy:2.62, ytd:-1.95},
+  {n:'中证500',  ret:2.15, dd:-44.3, amp:34.6, pe:33.7, pq:70, dy:1.32, ytd:5.16},
+  {n:'中证1000', ret:-1.28, dd:-56.1, amp:33.9, pe:44.6, pq:65, dy:1.05, ytd:2.25},
+  {n:'创业板指', ret:4.61, dd:-58.5, amp:51.5, pe:38.4, pq:30, dy:0.94, ytd:6.13}
+];
+var AMP = [
+  {n:'科创50', v:80.6}, {n:'创业板指', v:51.5}, {n:'中证500', v:34.6},
+  {n:'中证1000', v:33.9}, {n:'中证红利', v:20.6}, {n:'中证A500', v:20.4},
+  {n:'沪深300', v:15.2}, {n:'上证50', v:14.3}
+];
+var PEQ = [
+  {n:'科创50', v:80}, {n:'中证500', v:70}, {n:'中证1000', v:65},
+  {n:'沪深300', v:59}, {n:'上证50', v:55}, {n:'中证红利', v:55},
+  {n:'中证A500', v:46}, {n:'创业板指', v:30}
+];
+var C_UP = '#c0392b';
+var C_DOWN = '#1e8b5c';
+var C_BLUE = '#2f5fa8';
+
+function barColor(p) {
+  if (p.v >= 60) { return C_UP; }
+  if (p.v >= 40) { return '#d98b2b'; }
+  return C_DOWN;
+}
+
+echarts.init(document.getElementById('chartPerf')).setOption({
+  title: { text: '近10年：付出的代价 vs 拿到的回报', left: 'center', textStyle: { fontSize: 14, color: '#1a1d24' } },
+  tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+  legend: { data: ['近10年年化收益(价格口径)', '近10年最大回撤'], bottom: 0 },
+  grid: { left: 60, right: 30, top: 50, bottom: 60 },
+  xAxis: { type: 'category', data: IDX.map(function (d) { return d.n; }) },
+  yAxis: [
+    { type: 'value', name: '收益率(%)', min: -60, max: 10 },
+    { type: 'value', name: '回撤(%)', min: -60, max: 10 }
+  ],
+  series: [
+    {
+      name: '近10年年化收益(价格口径)', type: 'bar', barWidth: '32%',
+      itemStyle: { color: C_UP },
+      label: { show: true, position: 'top', formatter: '{c}%' },
+      data: IDX.map(function (d) { return d.ret; })
+    },
+    {
+      name: '近10年最大回撤', type: 'bar', barWidth: '32%',
+      itemStyle: { color: C_DOWN },
+      label: { show: true, position: 'bottom', formatter: '{c}%' },
+      data: IDX.map(function (d) { return d.dd; })
+    }
+  ]
+});
+
+echarts.init(document.getElementById('chartAmp')).setOption({
+  title: { text: '近52周振幅（越高越颠簸）', left: 'center', textStyle: { fontSize: 14, color: '#1a1d24' } },
+  tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' }, formatter: '{b}: {c}%' },
+  grid: { left: 80, right: 40, top: 46, bottom: 30 },
+  xAxis: { type: 'value', max: 90, axisLabel: { formatter: '{value}%' } },
+  yAxis: { type: 'category', data: AMP.map(function (d) { return d.n; }).reverse() },
+  series: [{
+    type: 'bar', barWidth: '58%',
+    label: { show: true, position: 'right', formatter: '{c}%' },
+    data: AMP.slice().reverse().map(function (d) {
+      return { value: d.v, itemStyle: { color: barColor(d) } };
+    })
+  }]
+});
+
+echarts.init(document.getElementById('chartPe')).setOption({
+  title: { text: '当前 PE(TTM) 近十年分位（越高越贵）', left: 'center', textStyle: { fontSize: 14, color: '#1a1d24' } },
+  tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' }, formatter: '{b}: {c}%' },
+  grid: { left: 80, right: 40, top: 46, bottom: 30 },
+  xAxis: { type: 'value', max: 100, axisLabel: { formatter: '{value}%' } },
+  yAxis: { type: 'category', data: PEQ.map(function (d) { return d.n; }).reverse() },
+  series: [{
+    type: 'bar', barWidth: '58%',
+    label: { show: true, position: 'right', formatter: '{c}%' },
+    data: PEQ.slice().reverse().map(function (d) {
+      return { value: d.v, itemStyle: { color: barColor(d) } };
+    })
+  }]
+});
+
+function switchView(v) {
+  var c = document.getElementById('viewChart');
+  var t = document.getElementById('viewTable');
+  var bc = document.getElementById('btnChart');
+  var bt = document.getElementById('btnTable');
+  if (v === 'chart') {
+    c.style.display = 'block';
+    t.style.display = 'none';
+    bc.className = 'on';
+    bt.className = '';
+  } else {
+    c.style.display = 'none';
+    t.style.display = 'block';
+    bc.className = '';
+    bt.className = 'on';
+    renderTable();
+    window.dispatchEvent(new Event('resize'));
+  }
+}
+
+function renderTable() {
+  var el = document.getElementById('viewTable');
+  if (el.getAttribute('data-done') === '1') { return; }
+  el.setAttribute('data-done', '1');
+  var rows = '';
+  IDX.forEach(function (d) {
+    rows += '<tr>'
+      + '<td><strong>' + d.n + '</strong></td>'
+      + '<td class="num">' + (d.ret >= 0 ? '<span class="red">+' + d.ret + '%</span>' : '<span class="green">' + d.ret + '%</span>') + '</td>'
+      + '<td class="num"><span class="green">' + d.dd + '%</span></td>'
+      + '<td class="num">' + d.amp + '%</td>'
+      + '<td class="num">' + d.pe + '</td>'
+      + '<td class="num">' + d.pq + '%</td>'
+      + '<td class="num">' + d.dy + '%</td>'
+      + '<td class="num">' + (d.ytd >= 0 ? '<span class="red">+' + d.ytd + '%</span>' : '<span class="green">' + d.ytd + '%</span>') + '</td>'
+      + '</tr>';
+  });
+  el.innerHTML = '<table><thead><tr>'
+    + '<th>指数</th><th class="num">近10年年化<br>(价格口径)</th><th class="num">近10年<br>最大回撤</th>'
+    + '<th class="num">近52周<br>振幅</th><th class="num">PE<br>(TTM)</th><th class="num">PE十年<br>分位</th>'
+    + '<th class="num">股息率</th><th class="num">年初至今<br>(9/21)</th></tr></thead><tbody>' + rows + '</tbody></table>'
+    + '<p class="muted">本表仅含样本满10年的6只指数；中证A500（回溯测算，全收益口径近10年 +4.79%，最大回撤 -44.30%）与科创50（基日以来年化 +8.15%，最大回撤 -60.7%）因口径不同未列入，需核实原文。</p>';
+}
+</script>
+
+</body>
+</html>

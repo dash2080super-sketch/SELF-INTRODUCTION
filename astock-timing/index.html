@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>A股择时看板 · 沪深300 指标与仓位建议</title>
+<script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
+<style>
+  :root{
+    --bg:#f6f7f9; --card:#fff; --ink:#1a1d24; --ink2:#4a5160; --ink3:#7d8698;
+    --line:#e3e7ee; --accent:#b8322e; --up:#c0392b; --down:#1e8b5c; --blue:#2f5fa8;
+    --gold:#a8791b; --tag:#eef2f9;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei","Segoe UI",sans-serif;
+    line-height:1.7;font-size:15px;}
+  .wrap{max-width:1120px;margin:0 auto;padding:24px 18px 60px;}
+  header.top{border-bottom:3px solid var(--accent);padding-bottom:12px;margin-bottom:18px;}
+  h1{font-size:24px;margin:0 0 5px;letter-spacing:.5px;}
+  .sub{color:var(--ink3);font-size:13px;}
+  h2{font-size:18px;margin:30px 0 10px;padding-left:10px;border-left:4px solid var(--accent);}
+  h3{font-size:15.5px;margin:18px 0 6px;}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:16px 18px;margin:12px 0;}
+  .card h3{margin-top:0;}
+  .muted{color:var(--ink3);font-size:12.5px;}
+  .bar{height:8px;border-radius:4px;background:#eceff4;overflow:hidden;margin-top:7px;}
+  .bar > i{display:block;height:100%;border-radius:4px;}
+  .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:13px;}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+  .metric{border:1px solid var(--line);border-radius:10px;padding:13px 14px;background:#fff;}
+  .metric .nm{font-size:13px;color:var(--ink2);}
+  .metric .vl{font-size:23px;font-weight:700;font-variant-numeric:tabular-nums;margin:2px 0;}
+  .metric .th{font-size:12px;color:var(--ink3);}
+  .pill{display:inline-block;border-radius:4px;padding:1px 8px;font-size:12px;font-weight:600;}
+  .p-g{background:#e8f5ee;color:#1e8b5c;}
+  .p-n{background:#f1efe8;color:#5f5e5a;}
+  .p-r{background:#fbecea;color:#b8322e;}
+  .p-o{background:#fdf1dc;color:#a8791b;}
+  table{width:100%;border-collapse:collapse;font-size:13.5px;margin:10px 0;}
+  th,td{border:1px solid var(--line);padding:7px 9px;text-align:left;vertical-align:top;}
+  th{background:#f2f5fa;font-weight:600;color:var(--ink2);}
+  td.num,th.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap;}
+  tbody tr:nth-child(even){background:#fbfcfe;}
+  .red{color:var(--up);font-weight:600;}
+  .green{color:var(--down);font-weight:600;}
+  .calc{background:#fffdf7;border:1px solid #f0dcb8;border-left:5px solid var(--gold);}
+  label{font-size:13px;color:var(--ink2);display:block;margin:9px 0 3px;}
+  input[type=number]{width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:6px;font-size:15px;
+    font-family:inherit;font-variant-numeric:tabular-nums;}
+  .out{border-radius:9px;padding:15px 17px;margin-top:14px;color:#fff;}
+  .out .t1{font-size:19px;font-weight:700;}
+  .out .t2{font-size:14px;margin-top:5px;opacity:.96;}
+  .out .t3{font-size:13px;margin-top:9px;opacity:.92;line-height:1.6;}
+  .ladder{border:1px solid var(--line);border-radius:8px;overflow:hidden;margin-top:8px;}
+  .ladder div{display:flex;align-items:center;gap:11px;padding:8px 13px;border-bottom:1px solid var(--line);font-size:13.5px;}
+  .ladder div:last-child{border-bottom:0;}
+  .ladder .sw{width:13px;height:13px;border-radius:3px;flex:none;}
+  .ladder .rng{width:120px;flex:none;font-variant-numeric:tabular-nums;font-weight:600;}
+  .ladder .lvl{width:80px;flex:none;}
+  .hi{background:#fff6e8;}
+  .warn{background:#fdf4f4;border:1px solid #f3d2d0;border-left:5px solid var(--up);}
+  .note{background:#f4f8fd;border:1px solid #d9e4f2;border-left:5px solid var(--blue);}
+  ul,ol{padding-left:21px;margin:8px 0;} li{margin:4px 0;}
+  .code{font-family:"SF Mono",Consolas,monospace;font-weight:600;}
+  .disc{margin-top:16px;padding:13px 15px;background:#f6f7f9;border:1px dashed #c9cfda;border-radius:8px;
+    color:var(--ink2);font-size:13px;}
+  footer{margin-top:28px;padding-top:14px;border-top:1px solid var(--line);color:var(--ink3);font-size:12.5px;}
+  .chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;}
+  .chip{border:1px solid var(--line);border-radius:20px;padding:4px 12px;font-size:12.5px;color:var(--ink2);background:#fff;}
+  @media(max-width:880px){.grid3,.grid2{grid-template-columns:1fr;}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="top">
+  <h1>A股择时看板 · 沪深300</h1>
+  <div class="sub">指标读数 + 仓位建议 · 数据截至 <strong>2026-09-21</strong>（估值为 2026-09-18 收盘）｜ 核心指标：股权风险溢价 ERP = 1/PE − 十年期国债收益率</div>
+</header>
+
+<div class="card" style="background:#fffaf3;border:1px solid #f0dcb8;border-left:5px solid var(--gold);">
+  <div style="font-size:13px;color:var(--gold);font-weight:700;">当前结论</div>
+  <div style="font-size:17px;margin-top:6px;">
+    ERP <strong>5.78%</strong> → 落在「<strong style="color:#BA7517;">偏便宜</strong>」档（买点阈值为 6.5%，<strong>未触发</strong>）。
+    建议：<strong>权益仓位 60%~75%</strong>（保守型下调至 45%~60%），定投<strong>按 1.5 倍</strong>扣款，<strong>不追加一次性重仓</strong>。
+  </div>
+  <div class="muted" style="margin-top:6px;">一句话：不贵也不便宜 —— 该继续定投，但不该梭哈；想重仓请等 ERP 站上 6.5%。</div>
+</div>
+
+<h2>一、核心指标看板</h2>
+<div class="grid3">
+  <div class="metric">
+    <div class="nm">ERP 股权风险溢价</div>
+    <div class="vl" style="color:#BA7517;">5.78<span style="font-size:14px;">%</span></div>
+    <div class="th">买点阈值 6.5% ｜ 卖点阈值 3.0%</div>
+    <div class="bar"><i style="width:64%;background:#BA7517;"></i></div>
+    <div style="margin-top:7px;"><span class="pill p-o">偏便宜 · 未触发</span></div>
+  </div>
+  <div class="metric">
+    <div class="nm">沪深300 PE(TTM)</div>
+    <div class="vl">13.43<span style="font-size:14px;">倍</span></div>
+    <div class="th">十年分位 52%~66%（不同源口径）</div>
+    <div class="bar"><i style="width:59%;background:#378ADD;"></i></div>
+    <div style="margin-top:7px;"><span class="pill p-n">中位偏上</span></div>
+  </div>
+  <div class="metric">
+    <div class="nm">股息率 − 十年国债</div>
+    <div class="vl" style="color:var(--up);">+0.94<span style="font-size:14px;">pp</span></div>
+    <div class="th">2.62% − 1.68% ｜ 底部区通常 &gt;1.0pp</div>
+    <div class="bar"><i style="width:63%;background:var(--up);"></i></div>
+    <div style="margin-top:7px;"><span class="pill p-g">股票现金流占优</span></div>
+  </div>
+  <div class="metric">
+    <div class="nm">全市场破净股占比</div>
+    <div class="vl">7.9<span style="font-size:14px;">%</span></div>
+    <div class="th">深度低估阈值 &gt;10% ｜ 历史底部曾达 17.02%</div>
+    <div class="bar"><i style="width:46%;background:#888780;"></i></div>
+    <div style="margin-top:7px;"><span class="pill p-n">中低位</span></div>
+  </div>
+  <div class="metric">
+    <div class="nm">融资买入额 / 成交额</div>
+    <div class="vl">8.88<span style="font-size:14px;">%</span></div>
+    <div class="th">警戒 12%（2018/2021顶）｜ 极端 19%（2015顶）</div>
+    <div class="bar"><i style="width:47%;background:#888780;"></i></div>
+    <div style="margin-top:7px;"><span class="pill p-n">中性</span></div>
+  </div>
+  <div class="metric">
+    <div class="nm">市值 / GDP（仅A股）</div>
+    <div class="vl">82~90<span style="font-size:14px;">%</span></div>
+    <div class="th">合理区间 60%~110% ｜ 口径分歧大</div>
+    <div class="bar"><i style="width:78%;background:#D85A30;"></i></div>
+    <div style="margin-top:7px;"><span class="pill p-n">合理偏上沿</span></div>
+  </div>
+</div>
+<p class="muted">进度条含义：当前值在"0 → 极端阈值"区间中的相对位置，越满表示离信号越近。ERP、PE 分位、破净率、融资占比为反向刻度（越满＝越接近买点/警戒），此处已按方向归一。</p>
+
+<h2>二、自己算：输入 PE 和国债利率，立刻拿到建议</h2>
+<div class="card calc">
+  <div class="grid2">
+    <div>
+      <label for="pe">沪深300 市盈率 PE(TTM)，当前 13.43</label>
+      <input type="number" id="pe" value="13.43" step="0.01" min="5" max="60">
+    </div>
+    <div>
+      <label for="bond">十年期国债收益率（%），当前 1.68</label>
+      <input type="number" id="bond" value="1.68" step="0.01" min="0.5" max="6">
+    </div>
+  </div>
+  <div style="margin-top:12px;">
+    <label style="display:inline-flex;align-items:center;gap:6px;">
+      <input type="checkbox" id="cons" checked style="width:auto;"> 我是保守型投资者（每档再下调 12 个百分点）
+    </label>
+  </div>
+  <div id="out" class="out" style="background:#BA7517;">
+    <div class="t1">档位：偏便宜</div>
+    <div class="t2">ERP = 5.78%　建议权益仓位 60%~75%</div>
+    <div class="t3">定投倍数 1.5 倍</div>
+  </div>
+  <div class="muted" style="margin-top:8px;">公式：ERP = 100 ÷ PE − 十年国债收益率。两个数在任何行情软件都能查到，一分钟更新一次读数。</div>
+</div>
+
+<div class="card">
+  <h3>七档对照表（当前所处档位已高亮）</h3>
+  <div class="ladder" id="ladder"></div>
+  <p class="muted" style="margin-bottom:0;">"权益仓位"＝投入股市的钱占你可投资金融资产的百分比。钻石坑十年仅出现 3 次（2014/6、2022/10、2024/2），每次极值只停留 3~5 个交易日。</p>
+</div>
+
+<h2>三、二十年钟摆：ERP 与历次大底大顶</h2>
+<div id="chartERP" style="width:100%;height:400px;"></div>
+<p class="muted">绿色＝ERP 高位（历次大底区）；红色＝ERP 低位（历次大顶区）；橙色＝当前。虚线为买点阈值 6.5% 与卖点阈值 3.0%。</p>
+
+<h2>四、等到了之后到底赚不赚钱</h2>
+<div id="chartFwd" style="width:100%;height:360px;"></div>
+<table>
+  <thead><tr><th>入场时点（月末收盘）</th><th class="num">入场点位</th><th class="num">6个月后</th><th class="num">12个月后</th></tr></thead>
+  <tbody>
+    <tr><td>2022-04-29</td><td class="num">4016.24</td><td class="num"><span class="green">−12.64%</span></td><td class="num"><span class="red">+0.32%</span></td></tr>
+    <tr><td>2022-10-31</td><td class="num">3508.70</td><td class="num"><span class="red">+14.83%</span></td><td class="num"><span class="red">+1.82%</span></td></tr>
+    <tr><td>2024-02-29</td><td class="num">3516.08</td><td class="num"><span class="green">−5.54%</span></td><td class="num"><span class="red">+10.64%</span></td></tr>
+    <tr><td>2024-09-30</td><td class="num">4017.85</td><td class="num"><span class="green">−3.25%</span></td><td class="num"><span class="red">+15.50%</span></td></tr>
+    <tr><td>2025-04-30</td><td class="num">3770.57</td><td class="num"><span class="red">+23.08%</span></td><td class="num"><span class="red">+27.50%</span></td></tr>
+    <tr style="background:#f2f5fa;"><td><strong>平均 / 胜率</strong></td><td class="num">—</td><td class="num"><strong>+3.30%（2/5）</strong></td><td class="num"><strong>+11.16%（5/5）</strong></td></tr>
+  </tbody>
+</table>
+<div class="warn card">
+  <strong>这张表是全部内容里最值钱的一张。</strong>ERP 是一个"三年不亏"的指标，不是一个"三个月赚钱"的指标 —— 五次里三次在半年后仍然亏损。所以它的正确用法是决定仓位，不是决定明天买不买。
+</div>
+
+<h2>五、指标清单与阈值</h2>
+<table>
+  <thead><tr><th>指标</th><th>买点阈值</th><th>卖点阈值</th><th class="num">当前</th><th>可靠度</th></tr></thead>
+  <tbody>
+    <tr><td><strong>ERP</strong>（1/PE − 十年国债）</td><td>&gt;6.5% 黄金坑 / &gt;7.0% 钻石坑</td><td>&lt;3.0% 谨慎 / &lt;2.0% 危险</td><td class="num">5.78%</td><td><span class="pill p-g">高</span></td></tr>
+    <tr><td>PE(TTM) 十年分位</td><td>&lt;30%</td><td>&gt;80%</td><td class="num">52%~66%</td><td><span class="pill p-g">高</span></td></tr>
+    <tr><td>股息率 − 十年国债</td><td>差值扩大</td><td>差值转负</td><td class="num">+0.94pp</td><td><span class="pill p-g">高</span></td></tr>
+    <tr><td>全市场破净股占比</td><td>&gt;10%</td><td>&lt;3%</td><td class="num">7.9%</td><td><span class="pill p-n">中</span></td></tr>
+    <tr><td>融资买入额 / 成交额</td><td>&lt;6%</td><td>&gt;12%</td><td class="num">8.88%</td><td><span class="pill p-n">中</span></td></tr>
+    <tr><td>新成立偏股基金（周）</td><td>&lt;50 亿份且持续冰点</td><td>爆款频出</td><td class="num">77.7 亿份</td><td><span class="pill p-n">中</span></td></tr>
+    <tr><td>市值 / GDP</td><td>&lt;60%</td><td>&gt;110%</td><td class="num">82%~90%</td><td><span class="pill p-o">低</span></td></tr>
+    <tr style="background:#fdf4f4;">
+      <td><strong>不推荐</strong>：固定点位派、整数关口、MACD 金叉死叉</td>
+      <td colspan="4">同一 ERP 信号对应的指数点位可以差 21%（见下表），点位没有稳定含义；整数关口只是心理锚。</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="card note">
+  <h3>为什么"多少点才买"这个问法本身有问题</h3>
+  <p>过去四年同一个信号（ERP 冲上 6.5%）触发了五次，当月沪深300 最低点分别是：</p>
+  <table>
+    <thead><tr><th>时点</th><th class="num">当月最低点</th><th class="num">ERP（约）</th><th class="num">十年国债</th></tr></thead>
+    <tbody>
+      <tr><td>2022年4-5月</td><td class="num">3757.09</td><td class="num">6.06%~6.5%</td><td class="num">约2.8%</td></tr>
+      <tr><td>2022年10月</td><td class="num">3495.95</td><td class="num">7.06%~7.08%</td><td class="num">约2.7%</td></tr>
+      <tr><td>2024年2月</td><td class="num">3108.35</td><td class="num">7.41%</td><td class="num">约2.4%</td></tr>
+      <tr><td>2024年9月</td><td class="num">3145.79</td><td class="num">6.5%~7.08%</td><td class="num">约2.1%</td></tr>
+      <tr><td>2025年4月</td><td class="num">3514.12</td><td class="num">6.70%</td><td class="num">约1.7%</td></tr>
+    </tbody>
+  </table>
+  <p style="margin-bottom:0;">最高 3757、最低 3108，<strong>极差 21%</strong>。原因：指数点位 = PE × 每股盈利，两个变量都在动；再加上国债利率从 2.8% 降到 1.68%，同样的 ERP 现在能容忍更高的 PE。<strong>记点位会系统性踏空，记分位数不会。</strong></p>
+</div>
+
+<h2>六、我的择时框架（五层权重）</h2>
+<div class="card">
+  <ol>
+    <li><strong>性价比层 50%</strong> — ERP 十年分位、PE分位、股息率−国债。决定<strong>目标权益仓位</strong>。这是唯一长期有正期望、可重复验证的一层。</li>
+    <li><strong>盈利周期层 20%</strong> — ROE 走向、PPI、工业企业利润。判断便宜是真便宜还是<strong>价值陷阱</strong>。</li>
+    <li><strong>流动性 / 政策层 15%</strong> — 十年国债走向、社融与 M1、美联储路径（2026-09-17 加息至 3.75%~4.00%，美债 10Y 站上 5.00%）。决定<strong>调仓时机</strong>。</li>
+    <li><strong>情绪 / 资金层 10%</strong> — 破净率、融资占比、新基发行冰点。<strong>只在极端时反向偏离 ±10% 仓位</strong>，中枢区必须无视。</li>
+    <li><strong>趋势执行层 5%</strong> — 年线、均线偏离、市场宽度。只当<strong>分批下单的节奏器</strong>，绝不用来预测。</li>
+  </ol>
+  <p style="margin-bottom:0;" class="muted">顺序很关键：估值是"值多少钱"，宏观是"什么时候兑现"。顺序反了，就会在便宜的时候因为坏消息重重而不敢买。</p>
+</div>
+
+<h2>七、三条落地规则</h2>
+<div class="card">
+  <ol>
+    <li><strong>把择时降维成"定投金额调节"。</strong>ERP 4.0~5.5% 扣 1 倍；5.5~6.5% 扣 1.5 倍；6.5~7.0% 扣 2 倍；7.0% 以上把攒下的闲钱一次性打进去。</li>
+    <li><strong>卖点比买点更懒。</strong>只有 ERP 掉到 3.0% 以下才开始分批减（每年限两次），掉到 2.0% 以下直接砍到 15% 以内。</li>
+    <li><strong>每季度只查一次指标。</strong>天天看你一定会在某次回调里手痒。</li>
+  </ol>
+</div>
+
+<div class="card">
+  <h3>更新提醒</h3>
+  <p class="muted" style="margin-bottom:0;">本页为静态页面，数值为 2026-09-21 快照。ERP 变化很慢，<strong>每季度更新一次即可</strong>；只需改 PE 与十年国债两个数，上面的计算器会重新给出档位与仓位建议。</p>
+</div>
+
+<div class="card muted">
+  <h3 style="color:var(--ink2);">数据来源与时点</h3>
+  <ul>
+    <li>沪深300 PE(TTM) 13.43、股息率 2.62%（2026-09-18）；十年期国债 1.68%（2026-09-20）；ERP 结构化数据字段 5.765%（2026-09-18）。</li>
+    <li>破净率 432 只 / 7.78%（证券日报，2026-09-18）；融资买入占比 8.88%、两融余额 2.61 万亿（2026-09-17）；新成立股混基金周份额 77.7 亿份（万联证券，2026-09-07~11）；市值/GDP 多口径 81.9%~90.3%。</li>
+    <li>ERP 历史节点：中证网、东方财富 Choice、券商研报公开整理，<strong>多源存在 0.3~0.5pp 差异，非一手来源，需核实原文</strong>。</li>
+    <li>历史收益为价格指数口径实算（沪深300 月线收盘价），<strong>不含分红再投资</strong>。</li>
+  </ul>
+</div>
+
+<div class="disc">
+  <strong>免责声明</strong>：以上内容基于公开数据和量化分析，仅供参考，不构成投资建议。市场有风险，投资需谨慎。任何投资决策应结合个人风险承受能力、资金状况和投资目标独立判断，必要时咨询持牌专业机构。过往表现不预示未来收益。
+</div>
+
+<footer>A股择时看板 · 数据截至 2026-09-21 · GMT+8</footer>
+
+</div>
+
+<script>
+var TIERS = [
+  { lo: 7.0, hi: 99,   nm: '钻石坑', pos: [90, 100], mult: '一次性投入',   color: '#1e8b5c',
+    tip: '历史十年仅 3 次（2014/6、2022/10、2024/2），极值只停留 3~5 个交易日。此时应把历史积累的闲钱一次性打进去，并且不要用杠杆。' },
+  { lo: 6.5, hi: 7.0,  nm: '黄金坑', pos: [75, 90],  mult: '2 倍',        color: '#3B6D11',
+    tip: '几年一次，可持续数周。定投金额加倍，同时可以把债券/现金部分按计划移到权益端。' },
+  { lo: 5.5, hi: 6.5,  nm: '偏便宜', pos: [60, 75],  mult: '1.5 倍',      color: '#BA7517',
+    tip: '不贵也不便宜 —— 继续定投、按 1.5 倍扣款，但不追加一次性重仓。想重仓请等 ERP 站上 6.5%。' }
+  ,{ lo: 4.0, hi: 5.5,  nm: '中性',   pos: [45, 60],  mult: '1 倍（基准）', color: '#888780',
+    tip: '市场绝大部分时间在这。此时正确的做法就是不择时：按基准仓位、按基准金额扣款，别自作聪明加减。' },
+  { lo: 3.0, hi: 4.0,  nm: '偏贵',   pos: [30, 45],  mult: '0.5 倍 / 停新', color: '#D85A30',
+    tip: '开始分批减，不再新增权益。可以把新增资金转向短债或货币，存量仓位不必急卖。' },
+  { lo: 2.0, hi: 3.0,  nm: '危险区', pos: [15, 30],  mult: '停止买入',     color: '#A32D2D',
+    tip: '对应 2018/1、2020/11-2021/3。停止买入，开始按计划分批减仓，每年限减两次。' },
+  { lo: 0,   hi: 2.0,  nm: '泡沫区', pos: [0, 15],   mult: '清仓式减仓',   color: '#501313',
+    tip: '2015/6（1.7%）、2021/2（1.99%）—— 之后沪深300 一年跌约 21%。权益仓位压到 15% 以内。' }
+];
+
+function tierOf(erp) {
+  for (var i = 0; i < TIERS.length; i++) {
+    if (erp >= TIERS[i].lo && erp < TIERS[i].hi) { return TIERS[i]; }
+  }
+  return TIERS[TIERS.length - 1];
+}
+
+function clamp(v, a, b) {
+  if (v < a) { return a; }
+  if (v > b) { return b; }
+  return v;
+}
+
+function renderLadder(activeName) {
+  var el = document.getElementById('ladder');
+  var html = '';
+  for (var i = 0; i < TIERS.length; i++) {
+    var t = TIERS[i];
+    var cls = '';
+    if (t.nm === activeName) { cls = ' class="hi"'; }
+    html += '<div' + cls + '><span class="sw" style="background:' + t.color + ';"></span>'
+      + '<span class="rng">' + t.lo.toFixed(1) + ' ~ ' + (t.hi > 90 ? '∞' : t.hi.toFixed(1)) + '%</span>'
+      + '<span class="lvl" style="color:' + t.color + ';font-weight:600;">' + t.nm + '</span>'
+      + '<span>权益 ' + t.pos[0] + '~' + t.pos[1] + '% ｜ 定投 ' + t.mult + '</span></div>';
+  }
+  el.innerHTML = html;
+}
+
+function update() {
+  var pe = parseFloat(document.getElementById('pe').value);
+  var bond = parseFloat(document.getElementById('bond').value);
+  var cons = document.getElementById('cons').checked;
+  if (!pe || pe <= 0 || !bond) { return; }
+  var erp = 100 / pe - bond;
+  var t = tierOf(erp);
+  var lo = t.pos[0];
+  var hi = t.pos[1];
+  if (cons) {
+    lo = clamp(lo - 12, 0, 100);
+    hi = clamp(hi - 12, 0, 100);
+  }
+  var out = document.getElementById('out');
+  out.style.background = t.color;
+  var suffix = cons ? '（保守型已下调 12pp）' : '';
+  out.innerHTML = '<div class="t1">档位：' + t.nm + '　ERP = ' + erp.toFixed(2) + '%</div>'
+    + '<div class="t2">建议权益仓位 ' + lo + '% ~ ' + hi + '% ' + suffix + '　｜　定投 ' + t.mult + '</div>'
+    + '<div class="t3">' + t.tip + '</div>';
+  renderLadder(t.nm);
+}
+
+document.getElementById('pe').addEventListener('input', update);
+document.getElementById('bond').addEventListener('input', update);
+document.getElementById('cons').addEventListener('change', update);
+renderLadder('偏便宜');
+update();
+
+var erpNodes = [
+  { d: '2014-06', v: 8.20, k: 'buy' },
+  { d: '2015-06', v: 1.70, k: 'sell' },
+  { d: '2016-01', v: 6.50, k: 'buy' },
+  { d: '2018-01', v: 2.40, k: 'sell' },
+  { d: '2019-01', v: 6.76, k: 'buy' },
+  { d: '2020-03', v: 6.40, k: 'buy' },
+  { d: '2021-02', v: 1.99, k: 'sell' },
+  { d: '2022-04', v: 6.06, k: 'buy' },
+  { d: '2022-10', v: 7.06, k: 'buy' },
+  { d: '2024-02', v: 7.41, k: 'buy' },
+  { d: '2024-09', v: 6.90, k: 'buy' },
+  { d: '2025-04', v: 6.70, k: 'buy' },
+  { d: '当前', v: 5.78, k: 'now' }
+];
+
+function erpColor(o) {
+  if (o.k === 'now') { return '#e08a1e'; }
+  if (o.k === 'buy') { return '#1e8b5c'; }
+  return '#c0392b';
+}
+
+echarts.init(document.getElementById('chartERP')).setOption({
+  title: { text: '沪深300 ERP：二十年的钟摆', left: 'center', textStyle: { fontSize: 15, color: '#1a1d24' } },
+  grid: { left: 52, right: 28, top: 56, bottom: 60 },
+  tooltip: { trigger: 'axis', valueFormatter: function (v) { return v + '%'; } },
+  xAxis: { type: 'category', data: erpNodes.map(function (o) { return o.d; }), axisLabel: { rotate: 40, fontSize: 11 } },
+  yAxis: { type: 'value', name: 'ERP (%)', min: 0, max: 9 },
+  series: [{
+    type: 'bar',
+    barWidth: '52%',
+    label: { show: true, position: 'top', fontSize: 11, formatter: '{c}%' },
+    data: erpNodes.map(function (o) {
+      return { value: o.v, itemStyle: { color: erpColor(o) } };
+    }),
+    markLine: {
+      symbol: 'none',
+      silent: true,
+      label: { position: 'insideEndTop', fontSize: 11 },
+      data: [
+        { yAxis: 6.5, lineStyle: { color: '#1e8b5c', type: 'dashed' }, label: { formatter: '买点阈值 6.5%' } },
+        { yAxis: 3.0, lineStyle: { color: '#c0392b', type: 'dashed' }, label: { formatter: '卖点阈值 3.0%' } }
+      ]
+    }
+  }]
+});
+
+echarts.init(document.getElementById('chartFwd')).setOption({
+  title: { text: 'ERP 触发后的真实成绩单：6 个月 vs 12 个月', left: 'center', textStyle: { fontSize: 15, color: '#1a1d24' } },
+  tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' }, valueFormatter: function (v) { return v + '%'; } },
+  legend: { bottom: 2, data: ['持有 6 个月', '持有 12 个月'] },
+  grid: { left: 56, right: 28, top: 52, bottom: 54 },
+  xAxis: { type: 'category', data: ['2022-04', '2022-10', '2024-02', '2024-09', '2025-04'] },
+  yAxis: { type: 'value', name: '收益率(%)', axisLabel: { formatter: '{value}%' } },
+  series: [
+    {
+      name: '持有 6 个月', type: 'bar', barWidth: '28%',
+      label: { show: true, position: 'top', fontSize: 11, formatter: '{c}%' },
+      data: [-12.64, 14.83, -5.54, -3.25, 23.08].map(function (v) {
+        return { value: v, itemStyle: { color: v >= 0 ? '#c0392b' : '#1e8b5c' } };
+      })
+    },
+    {
+      name: '持有 12 个月', type: 'bar', barWidth: '28%',
+      label: { show: true, position: 'top', fontSize: 11, formatter: '{c}%' },
+      data: [0.32, 1.82, 10.64, 15.50, 27.50].map(function (v) {
+        return { value: v, itemStyle: { color: v >= 0 ? '#e08a1e' : '#1e8b5c' } };
+      })
+    }
+  ]
+});
+</script>
+
+</body>
+</html>

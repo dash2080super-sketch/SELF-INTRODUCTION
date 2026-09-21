@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>沪深300 择时：买点卖点到底存不存在（2026-09-21）</title>
+<script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
+<style>
+  :root{
+    --bg:#f7f8fa; --card:#fff; --ink:#1a1d24; --ink2:#4a5160; --ink3:#7d8698;
+    --line:#e3e7ee; --accent:#b8322e; --up:#c0392b; --down:#1e8b5c; --blue:#2f5fa8;
+    --gold:#a8791b; --tag:#eef2f9;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei","Segoe UI",sans-serif;
+    line-height:1.72;font-size:15px;}
+  .wrap{max-width:1100px;margin:0 auto;padding:28px 20px 60px;}
+  header.top{border-bottom:3px solid var(--accent);padding-bottom:14px;margin-bottom:22px;}
+  h1{font-size:26px;margin:0 0 6px;letter-spacing:.5px;}
+  .sub{color:var(--ink3);font-size:13px;}
+  h2{font-size:19px;margin:34px 0 12px;padding-left:11px;border-left:4px solid var(--accent);}
+  h3{font-size:16px;margin:22px 0 8px;}
+  h4{font-size:14.5px;margin:14px 0 6px;}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:18px 20px;margin:14px 0;}
+  .tldr{background:#fffaf3;border:1px solid #f0dcb8;border-left:5px solid var(--gold);}
+  .tldr .k{font-weight:700;color:var(--gold);}
+  table{width:100%;border-collapse:collapse;font-size:13.5px;margin:10px 0;}
+  th,td{border:1px solid var(--line);padding:8px 10px;text-align:left;vertical-align:top;}
+  th{background:#f2f5fa;font-weight:600;color:var(--ink2);}
+  td.num,th.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap;}
+  tbody tr:nth-child(even){background:#fbfcfe;}
+  .red{color:var(--up);font-weight:600;}
+  .green{color:var(--down);font-weight:600;}
+  .muted{color:var(--ink3);font-size:12.5px;}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+  .chart{width:100%;height:400px;}
+  .tag{display:inline-block;background:var(--tag);color:var(--blue);border-radius:4px;padding:1px 7px;font-size:12px;margin-right:6px;}
+  .tag.g{background:#e8f5ee;color:#1e8b5c;}
+  .tag.r{background:#fbecea;color:#b8322e;}
+  .warn{background:#fdf4f4;border:1px solid #f3d2d0;border-left:5px solid var(--up);}
+  .note{background:#f4f8fd;border:1px solid #d9e4f2;border-left:5px solid var(--blue);}
+  ul,ol{padding-left:22px;margin:8px 0;} li{margin:5px 0;}
+  .code{font-family:"SF Mono",Consolas,monospace;font-weight:600;}
+  .bignum{font-size:22px;font-weight:700;font-variant-numeric:tabular-nums;}
+  .kv{display:flex;flex-wrap:wrap;gap:10px 26px;}
+  .kv div{min-width:160px;}
+  .ladder{border:1px solid var(--line);border-radius:8px;overflow:hidden;}
+  .ladder div{display:flex;align-items:center;gap:12px;padding:9px 14px;border-bottom:1px solid var(--line);font-size:13.5px;}
+  .ladder div:last-child{border-bottom:0;}
+  .ladder .sw{width:14px;height:14px;border-radius:3px;flex:none;}
+  .ladder .rng{width:130px;flex:none;font-variant-numeric:tabular-nums;font-weight:600;}
+  .ladder .lvl{width:92px;flex:none;}
+  .now{background:#fff6e8 !important;border-left:4px solid var(--gold);}
+  footer{margin-top:36px;padding-top:16px;border-top:1px solid var(--line);color:var(--ink3);font-size:12.5px;}
+  .disc{margin-top:14px;padding:14px 16px;background:#f6f7f9;border:1px dashed #c9cfda;border-radius:8px;color:var(--ink2);font-size:13px;}
+  @media(max-width:860px){.grid2{grid-template-columns:1fr;}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="top">
+  <h1>沪深300 择时：买点、卖点，和你以为的那个"点位"</h1>
+  <div class="sub">数据截至 2026-09-21（估值为 2026-09-18 收盘口径）｜ 直面三个问题：有没有人研究出过、难不难等到、我会看什么</div>
+</header>
+
+<div class="card tldr">
+  <div class="k">一句话结论</div>
+  <p style="margin:8px 0 0;font-size:16px;">
+    <strong>有人研究出来了，而且指标很硬：<span class="code">股权风险溢价 ERP = 1/PE − 十年国债收益率</span>。</strong>
+    历史上它每次冲到 6.5% 以上都对应大底（2014/6、2018年底、2020/3、2022/10、2024/2、2024/9、2025/4），每次跌到 2% 以下都对应大顶（2015/6、2021/2）。
+    <strong>但你猜对了一半——这种极值确实极难等到，十年也就七八次、每次只停留 3~5 个交易日。</strong>
+    更残酷的是：<span class="code">我在报告里算了五次触发后的真实收益——6 个月后仍有 3/5 是亏的，12 个月后才是 5/5 全赚。</span>
+    所以它管的是"长期不会亏"，不管"马上涨"。
+  </p>
+  <div class="kv" style="margin-top:14px;">
+    <div><div class="muted">当前 ERP</div><div class="bignum">5.78%</div><div class="muted">远没到 6.5% 买点阈值</div></div>
+    <div><div class="muted">历史最高 / 最低</div><div class="bignum">8.2% / 1.7%</div><div class="muted">2014-06 底 / 2015-06 顶</div></div>
+    <div><div class="muted">沪深300 现价</div><div class="bignum">4539.57</div><div class="muted">PE(TTM) 13.43 倍</div></div>
+  </div>
+</div>
+
+<!-- ============ 1 ============ -->
+<h2>一、先拆一个误区：为什么"大盘多少点"这把尺子本身就是弯的</h2>
+<div class="card">
+  <p>你问"大盘多少点如何如何"——这个直觉很自然，但它有个致命问题。<strong>指数点位 = PE × 每股盈利（EPS）</strong>，两个变量都在动，所以同一句"贵/便宜"，对应的点位每年都不一样。</p>
+  <p>更直接的证据：下面这张表是过去四年里，<strong>同一个信号（ERP 冲到 6.5% 以上）触发了五次</strong>，看看它每次对应的点位：</p>
+  <table>
+    <thead><tr><th>触发时点</th><th class="num">当月沪深300最低点</th><th class="num">ERP（约）</th><th class="num">十年期国债</th><th>备注</th></tr></thead>
+    <tbody>
+      <tr><td>2022年4-5月</td><td class="num">3757.09</td><td class="num">6.06%~6.5%</td><td class="num">约2.8%</td><td>疫情冲击</td></tr>
+      <tr><td>2022年10月</td><td class="num">3495.95</td><td class="num">7.06%~7.08%</td><td class="num">约2.7%</td><td>防控调整前最后一跌</td></tr>
+      <tr><td>2024年2月</td><td class="num">3108.35</td><td class="num">7.41%</td><td class="num">约2.4%</td><td>微盘股流动性踩踏，近十年ERP最高</td></tr>
+      <tr><td>2024年9月</td><td class="num">3145.79</td><td class="num">6.5%~7.08%</td><td class="num">约2.1%</td><td>9·24 政策组合拳前夕</td></tr>
+      <tr><td>2025年4月</td><td class="num">3514.12</td><td class="num">6.70%</td><td class="num">约1.7%</td><td>底部抬升，未创新低</td></tr>
+    </tbody>
+  </table>
+  <p><strong>最高 3757，最低 3108——完全一样的信号，点位差了 21%。</strong>如果你在 2022 年跟朋友说"沪深300 跌到 3200 我就梭哈"，那你会在 2024 年 2 月触发（后来涨了）；如果你说"跌破 3100 才买"，那你一次也没买到。<span class="muted">（点位与月度数据：指数月线序列；ERP 为多来源区间值，不同源因 PE 是否剔除负值、整体法/中位数法口径不同，同一时点读数可差 0.3~0.5 个百分点）</span></p>
+  <p style="margin-bottom:0;">还有一个更隐蔽的：分母在漂移。十年期国债从 2022 年的 2.8% 一路降到现在的 1.68%，意味着"同样的 ERP"现在能容忍更高的 PE。<strong>死记数字会在低利率时代系统性踏空。</strong>所以在后面我的框架里，第一层永远是分位数，不是绝对值。</p>
+</div>
+
+<!-- ============ 2 ============ -->
+<h2>二、二十年的钟摆：这个指标长什么样</h2>
+<div id="chartERP" class="chart"></div>
+<p class="muted">绿色=ERP处于高位（股票相对债券便宜，历史上多为底部区）；红色=ERP处于低位（历史上多为顶部区）；橙色=当前位置。数据口径：沪深300 股权风险溢价 ERP = 1/PE(TTM) − 十年期国债收益率，各时点为多来源整理值。</p>
+
+<h2>三、"等到了"之后到底赚不赚钱——五次触发的真实成绩单</h2>
+<div class="card">
+  <p>这一步几乎所有讲 ERP 的文章都跳过了。我用沪深300 月线收盘价实算了每次触发后持有 6 个月和 12 个月的<strong>价格口径</strong>收益：</p>
+</div>
+<div id="chartFwd" class="chart"></div>
+<table>
+  <thead><tr><th>入场时点（月末收盘）</th><th class="num">入场点位</th><th class="num">6个月后</th><th class="num">12个月后</th><th class="num">12个月内最大浮亏</th></tr></thead>
+  <tbody>
+    <tr><td>2022-04-29</td><td class="num">4016.24</td><td class="num"><span class="green">−12.64%</span></td><td class="num"><span class="red">+0.32%</span></td><td class="num">−12.6%</td></tr>
+    <tr><td>2022-10-31</td><td class="num">3508.70</td><td class="num"><span class="red">+14.83%</span></td><td class="num"><span class="red">+1.82%</span></td><td class="num">−7.8%（其间）</td></tr>
+    <tr><td>2024-02-29</td><td class="num">3516.08</td><td class="num"><span class="green">−5.54%</span></td><td class="num"><span class="red">+10.64%</span></td><td class="num">−5.5%（8月）</td></tr>
+    <tr><td>2024-09-30</td><td class="num">4017.85</td><td class="num"><span class="green">−3.25%</span></td><td class="num"><span class="red">+15.50%</span></td><td class="num">−5.4%（其间）</td></tr>
+    <tr><td>2025-04-30</td><td class="num">3770.57</td><td class="num"><span class="red">+23.08%</span></td><td class="num"><span class="red">+27.50%</span></td><td class="num">基本单边</td></tr>
+    <tr style="background:#f2f5fa;"><td><strong>平均 / 胜率</strong></td><td class="num">—</td><td class="num"><strong>+3.30%（胜率 2/5）</strong></td><td class="num"><strong>+11.16%（胜率 5/5）</strong></td><td class="num">—</td></tr>
+  </tbody>
+</table>
+<div class="warn card">
+  <h4 style="margin-top:0;">这张表是整篇报告最值钱的一张</h4>
+  <p style="margin-bottom:0;">它把 ERP 的能力边界划得清清楚楚：<strong>它是一个"三年不亏"的指标，不是一个"三个月赚钱"的指标。</strong>
+  五次里三次在半年后仍然是负的——如果你把它当短线信号用，你会经历连续半年浮亏然后怀疑模型错了。它的正确用法只有一个：<strong>决定你这个位置的权益仓位应该配多少</strong>，而不是决定"明天要不要买"。</p>
+</div>
+
+<!-- ============ 4 ============ -->
+<h2>四、已经被研究出来的买点/卖点清单（按可靠度分档）</h2>
+<table>
+  <thead><tr><th>层级</th><th>指标</th><th>买点阈值</th><th>卖点阈值</th><th>当前读数</th><th>可靠度</th></tr></thead>
+  <tbody>
+    <tr>
+      <td><strong>第 1 层<br>性价比</strong></td>
+      <td><strong>ERP 股权风险溢价</strong><br><span class="muted">1/PE(TTM) − 十年国债</span></td>
+      <td>&gt;6.5% 黄金坑<br>&gt;7.0% 钻石坑</td>
+      <td>&lt;3.0% 谨慎<br>&lt;2.0% 危险</td>
+      <td><strong>5.78%</strong><br><span class="muted">未触发</span></td>
+      <td><span class="tag g">高</span>20年多次验证</td>
+    </tr>
+    <tr>
+      <td></td>
+      <td>PE(TTM) 十年分位</td>
+      <td>&lt;30%</td>
+      <td>&gt;80%</td>
+      <td>13.43倍<br><span class="muted">52%~66%</span></td>
+      <td><span class="tag g">高</span></td>
+    </tr>
+    <tr>
+      <td></td>
+      <td>股息率 − 十年国债</td>
+      <td>差值为正且扩大</td>
+      <td>差值转负</td>
+      <td>2.62% − 1.68%<br><span class="red">= +0.94pp</span></td>
+      <td><span class="tag g">高</span>底部特征</td>
+    </tr>
+    <tr>
+      <td><strong>第 2 层<br>广度 / 情绪</strong></td>
+      <td>全市场破净股占比<br><span class="muted">PB&lt;1</span></td>
+      <td>&gt;10% 深度低估<br>&gt;15% 极值</td>
+      <td>&lt;3%</td>
+      <td>7.78%~8.03%<br><span class="muted">底部曾达17.02%</span></td>
+      <td><span class="tag">中</span></td>
+    </tr>
+    <tr>
+      <td></td>
+      <td>融资买入额/成交额</td>
+      <td>&lt;6% 冰点</td>
+      <td>&gt;12% 警戒（2018/2021顶）<br>&gt;19% 极端（2015顶）</td>
+      <td>8.88%<br><span class="muted">中性</span></td>
+      <td><span class="tag">中</span></td>
+    </tr>
+    <tr>
+      <td></td>
+      <td>新成立偏股基金份额</td>
+      <td>周发行 &lt;50亿份且持续冰点</td>
+      <td>爆款频出、单只超百亿</td>
+      <td>周 77.7 亿份<br><span class="muted">年内单只均值创新低</span></td>
+      <td><span class="tag">中</span></td>
+    </tr>
+    <tr>
+      <td><strong>第 3 层<br>总量</strong></td>
+      <td>市值/GDP（巴菲特指标）</td>
+      <td>&lt;60%</td>
+      <td>&gt;110% 严重高估</td>
+      <td>81.9%~90.3%<br><span class="muted">仅A股口径</span></td>
+      <td><span class="tag">低</span>口径分歧大</td>
+    </tr>
+    <tr style="background:#fdf4f4;">
+      <td><strong>不推荐</strong></td>
+      <td>固定点位派（"跌到3200就买"）<br>MACD金叉死叉<br>整数关口</td>
+      <td colspan="4"><strong>没有可重复的统计证据。</strong>同一 ERP 信号对应点位可以差 21%（见第一节）；整数关口只是心理锚，没有对应的估值含义。<span class="muted">价格派/技术派在短期动量上有效，但对沪深300 这种年波动15%的宽基，做择时的交易成本通常吃掉全部超额。</span></td>
+    </tr>
+  </tbody>
+</table>
+<p class="muted">支持性研究（非一手来源，需核实原文）：德邦证券吴开达——ERP 突破均值+1倍标准差时，A股一年期胜率约 85%、收益率中位数约 20%；Choice/南方基金统计——股债利差局部高点（2014.6、2019.1、2020.3，均在 6.2% 以上）入场，持有半年与一年收益均超 25%；中信建投陈果——沪深300 隐含风险溢价连续 8 周超 7 年 90% 分位后，随后一个月指数平均上行约 10%。</p>
+
+<!-- ============ 5 ============ -->
+<h2>五、如果让我来择时：五层框架，以及"仓位表"</h2>
+<div class="card">
+  <p><strong>先亮我的立场：我不做"买/卖"的选择题，我做"仓位百分比"的填空题。</strong>原因很简单——上面那张成绩单已经证明，即使信号全对，半年维度仍然有一半以上是亏的。既然如此，唯一能控制的变量是"我在这个位置愿意押多少"。</p>
+
+  <h4>五层权重（我自己的取舍）</h4>
+  <table>
+    <thead><tr><th style="width:70px;">权重</th><th>层次</th><th>看什么</th><th>它决定什么</th></tr></thead>
+    <tbody>
+      <tr><td><strong>50%</strong></td><td><strong>① 性价比层</strong></td><td>沪深300 ERP（看<strong>十年分位</strong>，不看绝对值）、PE分位、股息率−国债</td><td><strong>目标权益仓位</strong>。这是唯一长期有正期望、且能反复验证的一层。</td></tr>
+      <tr><td><strong>20%</strong></td><td><strong>② 盈利周期层</strong></td><td>ROE 走向、PPI、工业企业利润、中报/年报盈利增速</td><td>便宜是真便宜，还是<strong>价值陷阱</strong>。决定要不要把目标仓位真的打上去。</td></tr>
+      <tr><td><strong>15%</strong></td><td><strong>③ 流动性 / 政策层</strong></td><td>十年国债走向、社融与M1、美联储利率路径（现为加息周期，2026-09-17 加至 3.75%~4.00%，美债10Y 站上 5.00%）</td><td><strong>调仓的时机</strong>。它同时是 ERP 公式的一半，会影响整个坐标系。</td></tr>
+      <tr><td><strong>10%</strong></td><td><strong>④ 情绪 / 资金层</strong></td><td>破净率、融资买入占比、新基发行冰点、换手率</td><td><strong>只在极端时反向小幅偏离（±10% 仓位）</strong>。中枢区间必须无视——这层是最多人用错的。</td></tr>
+      <tr><td><strong>5%</strong></td><td><strong>⑤ 趋势执行层</strong></td><td>年线位置、均线偏离度、市场宽度</td><td>只当<strong>分批下单的节奏器</strong>，绝不用来预测。</td></tr>
+    </tbody>
+  </table>
+  <p class="muted" style="margin-bottom:0;">注意②和③的顺序：很多人把宏观和消息排在第一位，我把它排在估值后面。因为宏观是"什么时候兑现"，估值是"值多少钱"——先后顺序反了，就会在便宜的时候因为坏消息重重而不敢买。</p>
+</div>
+
+<div class="card">
+  <h4 style="margin-top:0;">把第①层落成一张可执行的仓位表</h4>
+  <p class="muted" style="margin-top:0;">下表的权益仓位定义为"你准备投入股市的钱"占可投资金融资产的百分比；保守型投资者（比如你自己）建议在每档基础上再下调 10~15 个百分点。</p>
+  <div class="ladder">
+    <div><span class="sw" style="background:#1e8b5c;"></span><span class="rng">ERP &gt; 7.0%</span><span class="lvl" style="color:#1e8b5c;font-weight:600;">钻石坑</span><span>权益 90%~100%｜十年仅 3 次（2014/6、2022/10、2024/2），每次停留 3~5 个交易日</span></div>
+    <div><span class="sw" style="background:#3B6D11;"></span><span class="rng">6.5% ~ 7.0%</span><span class="lvl" style="color:#3B6D11;font-weight:600;">黄金坑</span><span>权益 75%~90%｜出现频率很低，几年一次，可持续数周</span></div>
+    <div class="now"><span class="sw" style="background:#EF9F27;"></span><span class="rng">5.5% ~ 6.5%</span><span class="lvl" style="color:#BA7517;font-weight:600;">偏便宜 ◀ 现在</span><span>权益 60%~75%｜<strong>当前 ERP 5.78%，处在这一档下沿</strong></span></div>
+    <div><span class="sw" style="background:#888780;"></span><span class="rng">4.0% ~ 5.5%</span><span class="lvl">中性</span><span>权益 45%~60%（基准）｜<strong>市场绝大部分时间待在这里，此时正确的做法就是"不择时"</strong></span></div>
+    <div><span class="sw" style="background:#D85A30;"></span><span class="rng">3.0% ~ 4.0%</span><span class="lvl">偏贵</span><span>权益 30%~45%｜开始分批减，不再新增</span></div>
+    <div><span class="sw" style="background:#A32D2D;"></span><span class="rng">2.0% ~ 3.0%</span><span class="lvl" style="color:#A32D2D;font-weight:600;">危险区</span><span>权益 15%~30%｜对应 2018/1、2020/11-2021/3</span></div>
+    <div><span class="sw" style="background:#501313;"></span><span class="rng">&lt; 2.0%</span><span class="lvl" style="color:#501313;font-weight:600;">泡沫区</span><span>权益 0~15%｜2015/6（1.7%）、2021/2（1.99%）——之后沪深300 一年跌约 21%</span></div>
+  </div>
+  <p style="margin-bottom:0;"><strong>这就是我的答案</strong>：与其等一个"钻石坑"然后梭哈（十年只有三次、每次只有三五天、而且那几天是全市场最恐慌的时候），不如<strong>让仓位随 ERP 连续变化</strong>。中性区保持基准仓，跌进便宜档把定投金额加倍，跌进黄金坑把历史积累的钱一次性补上去。这样做的好处是：<span class="code">你永远在场，但你在便宜的时候买得更多。</span></p>
+</div>
+
+<!-- ============ 6 ============ -->
+<h2>六、当前所有指标读数（2026-09-21）</h2>
+<div id="chartNow" class="chart"></div>
+<table>
+  <thead><tr><th>指标</th><th class="num">当前值</th><th class="num">极端买点阈值</th><th>状态判断</th><th>数据日期</th></tr></thead>
+  <tbody>
+    <tr><td>沪深300 ERP（1/PE − 十年国债）</td><td class="num">5.78%（测算）<br>5.765%（数据源）</td><td class="num">6.5%</td><td>偏便宜，但<strong>未触发</strong>买点</td><td>2026-09-18</td></tr>
+    <tr><td>沪深300 PE(TTM)</td><td class="num">13.43 倍</td><td class="num">&lt;11 倍</td><td>十年分位 52%~66%，中位偏上</td><td>2026-09-18</td></tr>
+    <tr><td>沪深300 股息率</td><td class="num">2.62%</td><td class="num">&gt;3.0%</td><td>高出十年国债 0.94pp，属底部常见特征</td><td>2026-09-18</td></tr>
+    <tr><td>全市场破净股占比</td><td class="num">7.78%~8.03%</td><td class="num">&gt;10%</td><td>中低位，远低于历史底部的 15%~17%</td><td>2026-09-18</td></tr>
+    <tr><td>融资买入额 / 成交额</td><td class="num">8.88%</td><td class="num">&gt;12% 为顶</td><td>中性（2015 顶为 19%+）</td><td>2026-09-17</td></tr>
+    <tr><td>两融余额</td><td class="num">2.61 万亿<br>占流通市值 2.60%</td><td class="num">—</td><td>自 6 月高点 3.03 万亿回落，近期企稳净买入</td><td>2026-09-17</td></tr>
+    <tr><td>上证换手率</td><td class="num">1.04%</td><td class="num">—</td><td>缩量观望，周日均已降至约 1.9 万亿成交</td><td>2026-09-21</td></tr>
+    <tr><td>新成立偏股基金</td><td class="num">周 77.7 亿份</td><td class="num">&lt;50 亿份</td><td>温和回暖无爆款，年内单只均值创近年最低</td><td>2026-09-11</td></tr>
+    <tr><td>市值 / GDP</td><td class="num">81.9%~90.3%</td><td class="num">&lt;60%</td><td>合理区间偏上沿（口径分歧大，含港股约112%）</td><td>2026-09-18</td></tr>
+  </tbody>
+</table>
+
+<div class="card note">
+  <h4 style="margin-top:0;">我的判断 + 三个必须说的反面意见</h4>
+  <p><strong>判断：</strong>所有指标指向同一个地方——<strong>"不贵、也不便宜，属于应该保持基准仓位、不该停下定投、但也没到该重仓抄底的位置"。</strong>按我最看重的 ERP 看，5.78% 连买点阈值都没碰到。</p>
+  <ol style="margin-bottom:0;">
+    <li><strong>"触发"不等于"见底"。</strong>2022 年 4 月 ERP 第一次破 6% 之后，沪深300 又跌了 12.6% 才在 10 月见到真正的底（ERP 7.06%）。以为"信号一亮就是最低点"的人，会在最难受的一段里失去信心。<strong>信号是一片区域，不是一个点。</strong></li>
+    <li><strong>同一天的分位数，不同机构能差 35 个百分点。</strong>同样是现在这个时点：江海证券按近 5 年口径算是 <strong>65.4% 分位</strong>，海通按 2005 年以来口径折合只有 <strong>约 32% 分位</strong>，我自己按十年滚动算是 <strong>70% 附近</strong>。一个连刻度都吵不出统一答案的指标，注定给不了"精确择时"——这正是我把仓位分成七档而不是给一个买卖点买卖点的原因。</li>
+    <li><strong>模型可能已经在缓慢失效。</strong>有分析师指出 2021 年之后 ERP 没有像历史上那样如期均值回归（可能因为成分股结构和盈利周期变了），建议改用"未来盈利收益率"替代传统算法。这不是要你扔掉它，而是提醒：<strong>任何单一指标都要留出错的余地。</strong></li>
+  </ol>
+</div>
+
+<!-- ============ 7 ============ -->
+<h2>七、给你的三条落地规则</h2>
+<div class="card">
+  <ol>
+    <li><strong>把"择时"降维成"定投金额调节"。</strong>ERP 在 4.0%~5.5% 时扣 1 倍；5.5%~6.5% 扣 1.5 倍；6.5%~7.0% 扣 2 倍；7.0% 以上，把攒下的闲钱一次性打进去。这样你既不会踏空，也不会在泡沫里满仓。</li>
+    <li><strong>卖点同理，且要比买点更懒。</strong>只有 ERP 掉到 3.0% 以下才开始分批减（每年限减两次），掉到 2.0% 以下直接砍到 15% 以内。中间所有"我觉得涨太多了"的冲动，都不构成卖出的理由。</li>
+    <li><strong>每季度只查一次指标。</strong>ERP、破净率、融资占比这三个数，看一次花五分钟。天天看，你一定会在某次回调里手痒做出不该做的动作。</li>
+  </ol>
+</div>
+
+<!-- ============ 来源 ============ -->
+<h2>数据来源与时点</h2>
+<div class="card muted">
+  <ul>
+    <li>沪深300 月线序列（2016-2026）：行情数据接口，用于自算 ERP 触发后 6/12 个月收益，价格口径不含分红。指数点位 4539.57 为 2026-09-21 收盘。</li>
+    <li>ERP 历史节点值：中证网《从股债利差看当前A股所处位置》、天天基金/东方财富 Choice、雪球个人投研整理引 Wind、方正中期等公开研报整理。<strong>多来源存在 0.3~0.5pp 差异，文中已标注区间。非一手来源，需核实原文。</strong></li>
+    <li>当前估值：沪深300 PE(TTM) 13.43、股息率 2.62%（2026-09-18）；十年期国债 1.68%（2026-09-20）；ERP 结构化数据字段 5.765%（2026-09-18）。</li>
+    <li>当前情绪面：破净率 432 只 / 7.78%（证券日报，2026-09-18）与 8.03%（第三方口径）；两融余额 26,098.47 亿元、融资买入占比 8.88%（2026-09-17）；新成立股混基金周份额 77.7 亿份（万联证券，2026-09-07~11）；市值/GDP 多口径 81.9%~90.3%。</li>
+    <li>宏观：美联储 2026-09-17 加息 25bp 至 3.75%~4.00%；美国 10 年期国债收益率 5.00%（2026-09-18）。</li>
+  </ul>
+</div>
+
+<div class="disc">
+  <strong>免责声明</strong>：以上内容基于公开数据和量化分析，仅供参考，不构成投资建议。市场有风险，投资需谨慎。任何投资决策应结合个人风险承受能力、资金状况和投资目标独立判断，必要时咨询持牌专业机构。过往表现不预示未来收益。
+</div>
+
+<footer>生成时间：2026-09-21 · GMT+8 ｜ 本文所有历史收益均为价格指数口径实算，不含分红再投资；全收益口径会更高。</footer>
+
+</div>
+
+<script>
+var C_GREEN = '#1e8b5c';
+var C_RED = '#c0392b';
+var C_NOW = '#e08a1e';
+
+var erpNodes = [
+  {d:'2014-06', v:8.20, k:'buy'},
+  {d:'2015-06', v:1.70, k:'sell'},
+  {d:'2016-01', v:6.50, k:'buy'},
+  {d:'2018-01', v:2.40, k:'sell'},
+  {d:'2019-01', v:6.76, k:'buy'},
+  {d:'2020-03', v:6.40, k:'buy'},
+  {d:'2021-02', v:1.99, k:'sell'},
+  {d:'2022-04', v:6.06, k:'buy'},
+  {d:'2022-10', v:7.06, k:'buy'},
+  {d:'2024-02', v:7.41, k:'buy'},
+  {d:'2024-09', v:6.90, k:'buy'},
+  {d:'2025-04', v:6.70, k:'buy'},
+  {d:'2026-09', v:5.78, k:'now'}
+];
+
+function erpColor(p) {
+  if (p.k === 'now') { return C_NOW; }
+  if (p.k === 'buy') { return C_GREEN; }
+  return C_RED;
+}
+
+echarts.init(document.getElementById('chartERP')).setOption({
+  title: { text: '沪深300 ERP：20 年的钟摆', left: 'center', textStyle: { fontSize: 15, color: '#1a1d24' } },
+  grid: { left: 55, right: 30, top: 66, bottom: 70 },
+  tooltip: { trigger: 'axis', formatter: function (ps) {
+      var p = ps[0];
+      var tag = erpNodes[p.dataIndex].k;
+      var tagText = '买点区';
+      if (tag === 'sell') { tagText = '卖点区'; }
+      if (tag === 'now') { tagText = '当前'; }
+      return p.name + '<br/>ERP ' + p.value + '% · ' + tagText;
+    }
+  },
+  xAxis: { type: 'category', data: erpNodes.map(function (o) { return o.d; }), axisLabel: { rotate: 40, fontSize: 11 } },
+  yAxis: { type: 'value', name: 'ERP (%)', min: 0, max: 9 },
+  series: [{
+    type: 'bar',
+    barWidth: '52%',
+    label: { show: true, position: 'top', fontSize: 11, formatter: '{c}%' },
+    data: erpNodes.map(function (o) {
+      return { value: o.v, itemStyle: { color: erpColor(o) } };
+    }),
+    markLine: {
+      symbol: 'none',
+      silent: true,
+      label: { position: 'insideEndTop', fontSize: 11 },
+      data: [
+        { yAxis: 6.5, lineStyle: { color: C_GREEN, type: 'dashed' }, label: { formatter: '买点阈值 6.5%' } },
+        { yAxis: 3.0, lineStyle: { color: C_RED, type: 'dashed' }, label: { formatter: '卖点阈值 3.0%' } }
+      ]
+    }
+  }]
+});
+
+var fwdDates = ['2022-04', '2022-10', '2024-02', '2024-09', '2025-04'];
+var fwd6 = [-12.64, 14.83, -5.54, -3.25, 23.08];
+var fwd12 = [0.32, 1.82, 10.64, 15.50, 27.50];
+
+echarts.init(document.getElementById('chartFwd')).setOption({
+  title: { text: 'ERP 触发后的真实成绩单：6 个月 vs 12 个月', left: 'center', textStyle: { fontSize: 15, color: '#1a1d24' } },
+  tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' }, valueFormatter: function (v) { return v + '%'; } },
+  legend: { bottom: 4, data: ['持有 6 个月', '持有 12 个月'] },
+  grid: { left: 58, right: 30, top: 46, bottom: 58 },
+  xAxis: { type: 'category', data: fwdDates },
+  yAxis: { type: 'value', name: '收益率(%)', axisLabel: { formatter: '{value}%' } },
+  series: [
+    {
+      name: '持有 6 个月', type: 'bar', barWidth: '28%',
+      label: { show: true, position: 'top', fontSize: 11, formatter: '{c}%' },
+      data: fwd6.map(function (v) {
+        return { value: v, itemStyle: { color: v >= 0 ? C_RED : C_GREEN } };
+      })
+    },
+    {
+      name: '持有 12 个月', type: 'bar', barWidth: '28%',
+      label: { show: true, position: 'top', fontSize: 11, formatter: '{c}%' },
+      data: fwd12.map(function (v) {
+        return { value: v, itemStyle: { color: v >= 0 ? '#e08a1e' : C_GREEN } };
+      })
+    }
+  ]
+});
+
+var nowBars = [
+  { n: 'ERP 5.78%', now: 5.78, thr: 6.5, unit: '%' },
+  { n: '破净率 7.9%', now: 7.9, thr: 10, unit: '%' },
+  { n: '融资买入占比 8.88%', now: 8.88, thr: 12, unit: '%' },
+  { n: '市值/GDP 86%', now: 86, thr: 110, unit: '%' },
+  { n: '股息率-国债 +0.94pp', now: 0.94, thr: 1.5, unit: 'pp' }
+];
+
+echarts.init(document.getElementById('chartNow')).setOption({
+  title: { text: '当前读数 vs 极端阈值（离信号还有多远）', left: 'center', textStyle: { fontSize: 15, color: '#1a1d24' } },
+  tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+  legend: { bottom: 4, data: ['当前读数', '极端买点/警戒阈值'] },
+  grid: { left: 150, right: 40, top: 46, bottom: 52 },
+  xAxis: { type: 'value' },
+  yAxis: { type: 'category', data: nowBars.map(function (o) { return o.n; }).slice().reverse() },
+  series: [
+    {
+      name: '当前读数', type: 'bar', barWidth: '32%',
+      label: { show: true, position: 'right', fontSize: 11 },
+      data: nowBars.slice().reverse().map(function (o) {
+        return { value: o.now, itemStyle: { color: '#378ADD' } };
+      })
+    },
+    {
+      name: '极端买点/警戒阈值', type: 'bar', barWidth: '32%',
+      label: { show: true, position: 'right', fontSize: 11 },
+      data: nowBars.slice().reverse().map(function (o) {
+        return { value: o.thr, itemStyle: { color: '#D3D1C7' } };
+      })
+    }
+  ]
+});
+</script>
+
+</body>
+</html>

@@ -14,6 +14,11 @@ import { drawdownRouter } from './src/drawdown-api.js';
 import { dividendRouter } from './src/dividend-api.js';
 import { dividend50Router } from './src/dividend50-api.js';
 
+// A股择时看板：一个完全独立的静态页（自带样式与 ECharts），
+// 由 modules/timing.js 这个 virtual 模块用 iframe 嵌进来。
+// 单独放一个目录而不是塞进 public/，是为了让它和 billboard 的 CSS/资源版本号互不干扰。
+const TIMING_DIR = process.env.TIMING_DIR || '/opt/astock-timing';
+
 assertConfig();
 
 const modules = await loadModules();
@@ -92,6 +97,10 @@ function computeAssetVersion() {
   return h.digest('hex').slice(0, 8);
 }
 const ASSET_V = computeAssetVersion();
+
+// A股择时看板（放在 authGuard 之后 —— 看板是私人的，必须登录才能看）
+// 目录不存在时 express.static 会直接往下走，最终 404，不会让服务起不来。
+app.use('/timing', express.static(TIMING_DIR, { maxAge: 0, index: 'index.html', etag: true }));
 
 // 首页/登录页走这里，把占位符替换掉再发出去（放在 static 之前）
 app.get(/^\/index\.html$/, (req, res, next) => {

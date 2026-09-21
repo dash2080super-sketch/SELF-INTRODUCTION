@@ -59,6 +59,11 @@ ufw 状态：active，仅放行 22 / 443。**隧道方案不需要再开任何�
 4. **密码、token、私钥、cert.pem 不进聊天记录**，也不写进本文件。要改看板密码用
    `ssh -t root@188.166.250.14 /opt/billboard/scripts/set-login-password.sh`（Vic 自己输入）。
 5. Dog 只在对话期间存在，不 7×24 值守。要长期自动化的东西必须落成 cron + 脚本 + 告警。
+6. **测试脚本不许全表扫删**。清理逻辑只能删"自己刚创建的那几条"（按 id 精确匹配）。
+   在真实库上跑任何会写数据的脚本前，先 `node scripts/db-counts.mjs` 存一份基线，
+   跑完再对一次。违反过一次，见 2026-09-21 17:30 事故复盘。
+7. **Vic 自己录入的数据（to-do / 随想 / 单词 / 句子 / 自选股）属于生产数据**，
+   不是测试环境。任何"顺手清一下"的念头都要先问。
 
 ## 常用命令
 
@@ -510,6 +515,45 @@ catalog 里写 `ratio: { num, den, scale, label }`，`compose()` 把两条腿合
 A 股与港股指数腾讯全通（`sh000300` / `sh000001` / `sh000922` / `sz399006` / `hkHSTECH` / `hkHSCEI`）；
 新浪 `znb_` 系列含 **AH 溢价 `znb_HSAHP`**（现 124.0）、`znb_SHCOMP`、`znb_CAC`（均带涨跌幅）。
 
+### 2026-09-21 17:30 — 【事故复盘】smoke-test 会清空真实数据，已修
+
+**现象**：Vic 反馈自己录入的部分 to-do 内容"会消失"。
+
+**根因（是我的锅）**：`scripts/smoke-test.mjs` 第 [9] 步「清理测试数据」写的是
+
+```js
+for (const m of ['todos','thoughts','words','sentences']) {
+  const list = await req(`/api/m/${m}?limit=1000`);
+  for (const it of list.data.items) await req(`/api/m/${m}/${it.id}`, { method: 'DELETE' });
+}
+```
+
+即**把这 4 个模块的条目全部删光**，而不是只删测试自己建的。今天为验证财务看板改动，
+我在真实库上跑了 3 次，于是 Vic 的内容被连带清掉。同时 `kv/finance.draft` 也被无条件写成空串。
+
+**修复**（`scripts/smoke-test.mjs`）：
+- 新增 `created` 记录本次测试创建的每个 id，第 [9] 步**只按 id 精确删除自己建的条目**；
+  删除失败会打 `[WARN]` 而不是静默。
+- kv 改成先读原值 → 写入测试值 → 结束时还原原值。
+- 顺带修了几个会被真实数据干扰的断言：搜索/过滤/句子列表不再用 `length === 1`、
+  `>= 1` 这种绝对数字，改为判断"本次创建的那条 id 在不在结果里"；测试数据文案统一加
+  `冒烟测试用…请勿保留` 前缀，便于人工识别。
+
+**验证**：改动前后各跑一次 `scripts/db-counts.mjs` 对账 —— 行数
+`todos 2 / thoughts 1 / words 4 / sentences 0 / dividend_watchlist 4 / kv 4`
+**前后完全一致**；测试自身 30 通过 / 0 失败；`kv` 与自选股内容逐条核对未变。
+
+**新增只读工具**（以后动库前后都先跑一遍）：
+- `node scripts/db-counts.mjs` — 各表行数
+- `node scripts/db-peek.mjs` — kv 键值与 dividend_watchlist 内容（值做截断）
+两者都用 `readonly: true` 打开 SQLite，不可能写坏数据。
+
+**规矩（补进上面的运维规矩）**：任何脚本的"清理"逻辑，只能删自己创建的数据，
+禁止全表扫删；在真实库上跑破坏性脚本前，必须先 `db-counts.mjs` 存一份基线。
+
+**Vic 的决定**：不恢复已丢失的条目（内容量小，重录不值当）。已丢弃的临时文件
+`scripts/smoke-test.mjs.bak-<ts>` 保留在本地作为对照，已在 `.gitignore` 里排除。
+
 ### 待办 / 下一步候选
 
 - [x] NS 生效后验证 `https://vic-jianhua.me` 可访问（登录 + 建一条数据）
@@ -537,3 +581,10 @@ A 股与港股指数腾讯全通（`sh000300` / `sh000001` / `sh000922` / `sz399
 - [ ] todo 到期 / 提醒 → 复用 `fng-bark` 的 Bark 推送通道
 - [ ] 内存与磁盘告警（512MB 机器）
 - [ ] 域名 2027-09-21 到期前提醒续费
+- [x] **修复 smoke-test 清空真实数据的隐患** — 2026-09-21 17:30：清理改为按 id 精删自己建的数据，
+      新增只读对账工具 `scripts/db-counts.mjs` / `scripts/db-peek.mjs`，运维规矩加第 6、7 条
+- [ ] 清理 `scripts/`：已积累 12 个 `probe*.mjs` / `probe-a-share*.py` 和 4 个 `patch-*.mjs`
+      一次性脚本，建议归档到 `scripts/archive/`，只留能复跑的（probe-candidates、
+      verify-*、smoke-*、syntax-check、db-counts、db-peek）
+- [ ] 本地代码已 `git commit` 到 `ac2ca2c`，但**还没 push** 到 GitHub
+      （origin = dash2080super-sketch/SELF-INTRODUCTION），等 Vic 确认

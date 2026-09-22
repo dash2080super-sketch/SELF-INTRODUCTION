@@ -718,3 +718,42 @@ JSON 正确 `200 {"ok":true}`；线上 `smoke-test` **30 通过 / 0 失败**。
 且 VPS 只有 458MB 内存不适合装 Chromium，所以走「系统 Chrome + CDP」这条路。
 
 **提交**：`3c6095f`（第一版）→ `dd8ce31`（修注释 bug + 重写注入段），均在 VPS 本地，未 push。
+
+## 波段工作台（swing）
+
+新 tab：监控想做波段的 A 股 / 港股自选，低于买点 / 高于卖点整行换色。
+
+**组成**（virtual 模块，不用通用 CRUD）：
+
+- `modules/swing.js` —— 模块声明（`virtual: true`）
+- `src/swing-tables.js` —— `initSwingTables(db)` 建 `swing_watch`（含 columns repairs）
+- `src/swing-api.js` —— `/api/swing/{quotes,watch,resolve}`，写操作负责 code → secid 归一化
+- `src/swing-data.js` —— 东财取价 + 信号计算
+- `public/js/modules/swing.js`、`public/css/swing.css` —— 前端渲染
+- `server.js` —— `app.use('/api/swing', swingRouter)`
+
+**踩过的坑（都是会静默出错的那种，改之前先看这里）：**
+
+1. **海外 VPS 访问东财会被 302**。`push2.eastmoney.com` 返回 302 到 `push2delay.eastmoney.com`，
+   Node 的 fetch 跟跳转时不时会直接报 `fetch failed`（页面整屏变「无行情」）。
+   所以 `EM_HOSTS` 把**延时节点排第一**、push2 当备用：实测 5/5 成功，约 2 秒，
+   比绕跳转还快一倍（绕跳转约 4 秒）。
+2. **小数位只有单股接口可信**。`ulist.np` 返回的 `f59` 是脏数据（实测 81.29 / 64.04 这种），
+   只有 `stock/get` 的 f59 能用。策略：首次见到某标的时用单股问一次并把 `decimals` 落库，
+   之后一律走批量（一次请求拉全部，与标的数量无关）。`decimals = 0` 表示「还没问过」，**不猜**——
+   猜错一个数量级，港股 454.6 会变 45.46，而且错得很像真的。
+3. **空价格会被判成买点**。JS 里 `null <= 420` 是 `true`，不拦住的话行情一断，
+   整屏齐刷刷变「到买点」——这是会让人真下单的假信号。`signalOf` 必须先判 `price != null && Number.isFinite(price)`。
+4. **`div.innerHTML = '<tr>...'` 是无效的**。解析器的 div 上下文会把 `<tr>` `<td>` 当垃圾丢掉，
+   只剩里面的内容，于是 `class="sw-editing"` 这个外壳凭空消失，保存时 `querySelector('.sw-editing')` 拿到 null。
+   新增表单插进 `#sw-body`（div）→ 用 div 版；行内编辑替换 tbody 里的 tr（上下文是 tbody）→ 用 tr 版。
+5. **`@import` 必须写在所有规则之前**。追加到 app.css 末尾会被浏览器**静默忽略**，
+   控制台一句警告都没有，表现就是「CSS 明明传上去了却完全没生效」。
+   现在 swing.css 的 import 位于 app.css 第一行。
+
+**刷新策略**：间隔存 `localStorage['swing:interval']`（默认 5 分钟，可选 30 秒 / 1 分钟 / 5 分钟 / 10 分钟 / 仅手动），
+只在「页面可见 + 该 tab active」时轮询。后端 25 秒缓存窗口 + 请求合并 + 60 秒后台预热，
+10 分钟没人访问自动停预热（不白烧 VPS）。
+
+**拉价失败时**：回退上一次的快照并标 `stale`，前端在价格后面显示一个灰色「旧」字，
+而不是让价格突然变成「—」。

@@ -515,3 +515,6 @@ main:has(.dd-grid){max-width:1400px}
   .n225-vright{text-align:left}
   .n225-grid{grid-template-columns:repeat(auto-fill,minmax(110px,1fr))}
 }
+
+/* 生活工作台：iframe 需要宽一点的舞台 */
+main:has(> .panel[data-id="life"].active){max-width:1400px}

@@ -14,6 +14,7 @@ import { drawdownRouter } from './src/drawdown-api.js';
 import { n225Router } from './src/n225-api.js';
 import { dividendRouter } from './src/dividend-api.js';
 import { dividend50Router } from './src/dividend50-api.js';
+import { lifeRouter, initLifeTables } from './src/life-api.js';
 
 // A股择时看板：一个完全独立的静态页（自带样式与 ECharts），
 // 由 modules/timing.js 这个 virtual 模块用 iframe 嵌进来。
@@ -24,6 +25,7 @@ assertConfig();
 
 const modules = await loadModules();
 const db = initDB(modules);
+initLifeTables(db);
 for (const m of modules) {
   if (!m.virtual) m.router = createCrudRouter(m);
 }
@@ -57,6 +59,7 @@ app.use('/api/n225', n225Router);
 // dividend50 放前面：两条前缀都挂在 /api 下，先精确后宽松更省心
 app.use('/api/dividend50', dividend50Router);
 app.use('/api/dividend', dividendRouter);
+app.use('/api/life', lifeRouter);
 
 app.use('/api/m/:moduleId', (req, res, next) => {
   const mod = findModule(modules, req.params.moduleId);
@@ -107,6 +110,11 @@ const ASSET_V = computeAssetVersion();
 app.use('/timing', express.static(TIMING_DIR, { maxAge: 0, index: 'index.html', etag: true }));
 
 // 首页/登录页走这里，把占位符替换掉再发出去（放在 static 之前）
+// 生活工作台（日常集）：一份自包含的单文件页面，放在独立目录里，
+// 避免它自带的 CSS 和 app.css 互相污染。放在 authGuard 之后 —— 必须登录才能看。
+const LIFE_DIR = process.env.LIFE_DIR || '/opt/life-board';
+app.use('/life', express.static(LIFE_DIR, { maxAge: 0, index: 'index.html', etag: true }));
+
 app.get(/^\/index\.html$/, (req, res, next) => {
   fs.readFile(path.join(config.publicDir, 'index.html'), 'utf8', (err, html) => {
     if (err) return next(err);

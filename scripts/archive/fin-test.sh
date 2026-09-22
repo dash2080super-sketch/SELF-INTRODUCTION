@@ -1,7 +1,7 @@
 #!/bin/bash
 # 在 VPS 上测 /api/finance：登录拿 cookie -> 拉看板 -> 逐项打印
 set -u
-PW="${1:-bbTemp989003}"
+PW="${1:?用法: bash scripts/fin-test.sh <看板密码>}"   # 不允许写死默认密码
 rm -f /tmp/ck.txt
 curl -s -c /tmp/ck.txt -X POST http://127.0.0.1:3000/api/login \
   -H 'Content-Type: application/json' -d "{\"password\":\"$PW\"}" > /tmp/login.txt

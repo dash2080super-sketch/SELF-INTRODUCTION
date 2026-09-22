@@ -562,7 +562,10 @@ for (const m of ['todos','thoughts','words','sentences']) {
 - [x] finance 看板（24 项指标 / 6 分区 / 实时拉取 / 详细注解）— 2026-09-21 已上线
 - [x] 日经225ETF(513880) Bark 推送 — 2026-09-21 新建脚本 + 装 cron（15:15 工作日）
 - [x] 前端静态资源缓存问题 — 2026-09-21 改为自动版本号
-- [x] 密码已确认为 Vic 自己的（我用 `Woyaomaiche2026` 登录验证过 200）
+- [x] 密码已确认是 Vic 自己的（登录验证过 200）。
+      ⚠️ **2026-09-22 事故**：这一行原来把明文密码写进来了，而本仓库是**公开仓库**，
+      已随 2026-09-21 18:15 的 push 泄露到 GitHub。**按已泄露处理：密码必须换。**
+      明文已于 2026-09-22 抹除，永远不要再写进任何文件、提交、聊天记录。
 - [ ] **Vic 侧一次硬刷**（Ctrl+Shift+R）才能看到新 finance 看板（旧缓存需手动清一次）
 - [x] finance 看板分级实时刷新（fast 20s / slow 120s，无人观看 0 请求）
 - [x] **高股息板块（红利择时）** — 2026-09-21 上线：国债锚 / 股息率网格 /
@@ -583,8 +586,13 @@ for (const m of ['todos','thoughts','words','sentences']) {
 - [ ] 域名 2027-09-21 到期前提醒续费
 - [x] **修复 smoke-test 清空真实数据的隐患** — 2026-09-21 17:30：清理改为按 id 精删自己建的数据，
       新增只读对账工具 `scripts/db-counts.mjs` / `scripts/db-peek.mjs`，运维规矩加第 6、7 条
-- [ ] 清理 `scripts/`：已积累 12 个 `probe*.mjs` / `probe-a-share*.py` 和 4 个 `patch-*.mjs`
-      一次性脚本，建议归档到 `scripts/archive/`，只留能复跑的（probe-candidates、
-      verify-*、smoke-*、syntax-check、db-counts、db-peek）
-- [ ] 本地代码已 `git commit` 到 `ac2ca2c`，但**还没 push** 到 GitHub
-      （origin = dash2080super-sketch/SELF-INTRODUCTION），等 Vic 确认
+- [x] **清理 `scripts/`** — 2026-09-22：25 个一次性脚本（12 个 `probe*.mjs`、5 个
+      `probe-a-share*.py`、3 个 `patch-*.mjs`、`diag-data` / `fin-direct` / `fin-test.sh`
+      以及根目录草稿 `_boot.mjs` / `_t50.mjs`）挪进 `scripts/archive/`，并写了
+      `scripts/archive/README.md` 说明每一类是干嘛的。`scripts/` 根下只留能复跑的。
+      `.gitignore` 改为忽略所有 `_` 开头的草稿文件，避免再被误提交。
+- [ ] **【优先】换掉看板登录密码** — 明文密码曾被写进 `OPS-NOTES.md`，而本仓库是
+      **公开仓库**，已于 2026-09-21 18:15 随 push 泄露。改密码用
+      `ssh -t root@188.166.250.14 /opt/billboard/scripts/set-login-password.sh`（Vic 自己输入）
+- [ ] 决定是否重写 GitHub 历史把泄露的密码从公开仓库里抹掉（需要 force push +
+      VPS 重新对齐）。密码换了之后这件事的紧迫性下降，但仍建议做

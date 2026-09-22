@@ -519,5 +519,5 @@ main:has(.dd-grid){max-width:1400px}
 /* 生活工作台：iframe 需要宽一点的舞台 */
 main:has(> .panel[data-id="life"].active){max-width:1400px}
 
-/* Global Radar：iframe 需要宽一点的舞台（和 life 同理） /* billboard-embed-fill */ */
+/* Global Radar：iframe 需要宽一点的舞台（和 life 同理） billboard-embed-fill */
 main:has(> .panel[data-id="globalradar"].active){max-width:1600px}

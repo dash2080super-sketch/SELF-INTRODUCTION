@@ -3,6 +3,7 @@ import cookieParser from 'cookie-parser';
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
+import http from 'node:http';
 import { config, assertConfig } from './src/config.js';
 import { initDB } from './src/db.js';
 import { loadModules, findModule, publicMeta } from './src/modules.js';
@@ -108,6 +109,33 @@ const ASSET_V = computeAssetVersion();
 // A股择时看板（放在 authGuard 之后 —— 看板是私人的，必须登录才能看）
 // 目录不存在时 express.static 会直接往下走，最终 404，不会让服务起不来。
 app.use('/timing', express.static(TIMING_DIR, { maxAge: 0, index: 'index.html', etag: true }));
+
+// Global Radar：独立的 Python 服务（127.0.0.1:8787，systemd: globalradar.service）。
+// 挂在 /global-radar 下，放在 authGuard 之后 —— 必须登录才能看，和 /timing 一个待遇。
+// 用 node:http 手写一个最小反代，不引新依赖（node_modules 里没有 http-proxy-*）。
+const GR_UPSTREAM = process.env.GR_UPSTREAM || 'http://127.0.0.1:8787';
+app.use('/global-radar', (req, res) => {
+  // req.url 已被 express 剥掉 /global-radar 前缀，直接拼到上游即是最终路径
+  const target = new URL(req.url || '/', GR_UPSTREAM);
+  const headers = { ...req.headers };
+  delete headers.host;
+  delete headers.connection;
+  const up = http.request(target, { method: req.method, headers }, (pres) => {
+    res.status(pres.statusCode || 502);
+    for (const [k, v] of Object.entries(pres.headers)) {
+      if (k === 'transfer-encoding' || k === 'connection') continue;
+      res.set(k, v);
+    }
+    pres.pipe(res);
+  });
+  up.on('error', (e) => {
+    console.error('[billboard] globalradar 反代失败:', e.message);
+    if (!res.headersSent) res.status(502).type('text/plain').send('Global Radar 未运行（502）');
+    else res.end();
+  });
+  req.pipe(up);
+});
+
 
 // 首页/登录页走这里，把占位符替换掉再发出去（放在 static 之前）
 // 生活工作台（日常集）：一份自包含的单文件页面，放在独立目录里，

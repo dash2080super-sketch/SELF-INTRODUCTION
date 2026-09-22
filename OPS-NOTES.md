@@ -656,3 +656,29 @@ JSON 正确 `200 {"ok":true}`；线上 `smoke-test` **30 通过 / 0 失败**。
 - [ ] 已决定**不做** git 历史重写（不 force push）。意味着 `ac2ca2c`～`d4e18d3` 这几个
       旧提交里的明文密码**仍在仓库里**，只是仓库转 private 后不再对外。
       如果哪天要把仓库重新公开，必须先重写历史。
+
+## 2026-09-22 11:45 修复 /global-radar/ 404（Cannot GET /global-radar/）
+
+**现象**：https://vic-jianhua.me/global-radar/ 报 Express 默认 404 `Cannot GET /global-radar/`。
+
+**原因**：10:40 那次 life 模块补丁，是从一份**不含 radar 反代**的基线重写了 server.js，
+把 `/global-radar` → `http://127.0.0.1:8787` 的转发整段弄丢了。
+上游 Python 服务（globalradar.service，127.0.0.1:8787）一直是 healthy，纯粹是没人转发过去。
+
+**修复**：
+- 脚本 `/opt/billboard/patch-radar.mjs`（幂等：已打过直接退出；自动备份 `server.js.bak-radar-<ts>`；
+  `node --check` 不通过自动回滚）。把 `import http from 'node:http'` 和 `/global-radar` 反代插回
+  `/timing` 静态挂载之后（在 authGuard 之后，所以必须登录）。
+- `systemctl restart billboard`；commit `de85536`。
+
+**验证**：带 cookie 访问 `/global-radar/` → 200 / 11187B；`static/style.css` 200；
+`api/overview` 200（234KB，数据时间 11:45 新鲜）；未登录 → 302。
+
+**教训（重要）**
+1. 补丁脚本必须基于**当前线上 server.js / git HEAD** 改，绝不能用旧基线整体覆盖 ——
+   这次就是基线老化把别人的路由抖掉了。以后打补丁前先 `grep` 确认 `/timing`、`/life`、
+   `/global-radar` 三条挂载都还在。
+2. 改完立刻 `git add server.js && commit`。deploy.sh 现在是 `git pull --ff-only`，
+   本地 commit 是安全的；但任何 `git checkout -f` 都会把未推送的改动清空。
+3. VPS 本地目前领先 `origin/main` **3 个 commit**（`65f1619` n225 / `3aac480` life / `de85536` radar），
+   **全都还没 push**（GitHub 部署 key 待 Vic 贴公钥）。VPS 一挂就全没了。

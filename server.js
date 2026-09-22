@@ -16,6 +16,8 @@ import { n225Router } from './src/n225-api.js';
 import { dividendRouter } from './src/dividend-api.js';
 import { dividend50Router } from './src/dividend50-api.js';
 import { lifeRouter, initLifeTables } from './src/life-api.js';
+import { swingRouter } from './src/swing-api.js';
+import { initSwingTables } from './src/swing-tables.js';
 
 // A股择时看板：一个完全独立的静态页（自带样式与 ECharts），
 // 由 modules/timing.js 这个 virtual 模块用 iframe 嵌进来。
@@ -27,6 +29,7 @@ assertConfig();
 const modules = await loadModules();
 const db = initDB(modules);
 initLifeTables(db);
+initSwingTables(db);
 for (const m of modules) {
   if (!m.virtual) m.router = createCrudRouter(m);
 }
@@ -61,6 +64,8 @@ app.use('/api/n225', n225Router);
 app.use('/api/dividend50', dividend50Router);
 app.use('/api/dividend', dividendRouter);
 app.use('/api/life', lifeRouter);
+// 波段工作台：标的阈值存在 swing_watch 表，行情由服务端抓（避免浏览器直连东财）
+app.use('/api/swing', swingRouter);
 
 app.use('/api/m/:moduleId', (req, res, next) => {
   const mod = findModule(modules, req.params.moduleId);

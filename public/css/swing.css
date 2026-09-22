@@ -1,0 +1,74 @@
+/* ============ swing 波段工作台 ============ */
+/* 颜色语义：tone 由用户为每行选（粉/红/橙/蓝/绿/紫），这里只负责把它铺成一行背景。
+   注意：注释里不出现注释符号，避免像上次那样把规则整段吞掉。 */
+
+.sw-legend{display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin:12px 0 6px; font-size:12px; color:var(--muted)}
+.sw-chip{padding:3px 9px; border-radius:20px; border:1px solid var(--line); background:var(--surface-2)}
+.sw-chip.sw-pink{background:#fdeef4; border-color:#f7c9dc; color:#b3175f}
+.sw-chip.sw-red{background:#fdecec; border-color:#f6cbcb; color:#bf2b2b}
+.sw-chip.sw-flat{color:var(--muted)}
+.sw-note{color:var(--muted)}
+
+.sw-twrap{overflow-x:auto; border:1px solid var(--line); border-radius:var(--radius); background:var(--surface)}
+.sw-table{width:100%; border-collapse:collapse; font-size:13px; font-variant-numeric:tabular-nums}
+.sw-table th,.sw-table td{padding:9px 11px; border-bottom:1px solid var(--line-2); text-align:right; white-space:nowrap}
+.sw-table th{background:var(--surface-2); color:var(--ink-2); font-weight:600; font-size:12px}
+.sw-table thead th:first-child,.sw-table td:first-child{text-align:left}
+.sw-table tbody tr:last-child td{border-bottom:none}
+.sw-table td.up{color:var(--up)}
+.sw-table td.down{color:var(--down)}
+.sw-table .muted{color:var(--muted)}
+
+.sw-code{min-width:132px}
+.sw-mkt{display:inline-block; font-size:10px; font-weight:700; padding:1px 5px; border-radius:4px; margin-right:6px; vertical-align:1px}
+.sw-mkt-a{background:#e8f0fe; color:#2f6feb}
+.sw-mkt-h{background:#fff0e6; color:#c1630f}
+.sw-name{color:var(--muted); font-size:11.5px; margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:150px}
+
+.sw-price{font-size:15px; font-weight:650}
+.sw-badge{display:inline-block; font-size:10px; font-weight:700; padding:1px 6px; border-radius:4px; margin-left:6px; vertical-align:1px}
+.sw-badge-buy{background:#fdeef4; color:#b3175f; border:1px solid #f7c9dc}
+.sw-badge-sell{background:#fdecec; color:#bf2b2b; border:1px solid #f6cbcb}
+.sw-dist{font-size:12px}
+.sw-note-cell{text-align:left; color:var(--ink-2); font-size:12px; max-width:190px; white-space:normal}
+.sw-ops{text-align:right}
+button.sm{padding:3px 9px; font-size:12px}
+button.ghost.danger{color:var(--danger)}
+
+/* 触发态：整行铺色。用浅色底 + 左侧色条，保证文字仍然可读 */
+.sw-row.sw-pink{background:#fdeef4}
+.sw-row.sw-red{background:#fdecec}
+.sw-row.sw-orange{background:#fef2e6}
+.sw-row.sw-blue{background:#eaf1fe}
+.sw-row.sw-green{background:#e7f5ee}
+.sw-row.sw-purple{background:#f3edfd}
+
+.sw-row.sw-pink td:first-child{box-shadow:inset 3px 0 0 #e2558c}
+.sw-row.sw-red td:first-child{box-shadow:inset 3px 0 0 #d93a3a}
+.sw-row.sw-orange td:first-child{box-shadow:inset 3px 0 0 #d98200}
+.sw-row.sw-blue td:first-child{box-shadow:inset 3px 0 0 #2f6feb}
+.sw-row.sw-green td:first-child{box-shadow:inset 3px 0 0 #12945a}
+.sw-row.sw-purple td:first-child{box-shadow:inset 3px 0 0 #7c4dcc}
+
+/* 编辑表单：一行八个格子改成一行lots，用 flex 换行，屏幕窄也不至于挤爆 */
+.sw-form{display:flex; flex-wrap:wrap; gap:10px; align-items:flex-end; padding:4px 2px 2px}
+.sw-form label{display:flex; flex-direction:column; gap:4px; font-size:11.5px; color:var(--muted)}
+.sw-in{border:1px solid var(--line); border-radius:7px; padding:6px 8px; font-size:13px; background:var(--surface); color:var(--ink); min-width:120px}
+.sw-in:focus{outline:2px solid var(--accent-soft); border-color:var(--accent)}
+.sw-in.sw-wide{min-width:220px}
+.sw-btns{display:flex; gap:8px}
+.sw-editing>td{background:var(--surface-2)}
+.sw-editing-box{margin-bottom:12px; padding:12px 14px; border:1px dashed var(--accent); border-radius:var(--radius); background:var(--surface-2)}
+.sw-old{font-size:10px; color:var(--muted); margin-left:5px; border:1px solid var(--line); border-radius:4px; padding:0 4px; vertical-align:1px}
+.sw-hint{font-size:11.5px; color:var(--muted); margin-top:8px; line-height:1.7}
+
+.sw-select{border:1px solid var(--line); border-radius:7px; padding:5px 8px; font-size:12px; background:var(--surface); color:var(--ink-2)}
+.sw-foot{margin:10px 0 18px; font-size:12px; color:var(--muted)}
+.sw-foot .warn{color:var(--warn)}
+
+@media (max-width:760px){
+  .sw-table th,.sw-table td{padding:7px 8px; font-size:12px}
+  .sw-note-cell{display:none}
+  .sw-in{min-width:96px}
+  .sw-in.sw-wide{min-width:150px}
+}

@@ -561,6 +561,46 @@ for (const m of ['todos','thoughts','words','sentences']) {
 **Vic 的决定**：不恢复已丢失的条目（内容量小，重录不值当）。已丢弃的临时文件
 `scripts/smoke-test.mjs.bak-<ts>` 保留在本地作为对照，已在 `.gitignore` 里排除。
 
+### 2026-09-22 10:00 — 登录页改为真表单提交（修 Safari 不提示保存密码）
+
+**现象**：Vic 问"为什么 Safari 之类不会自动记下这个网站的密码"。
+
+**根因三条**（`public/login.html` 原实现）：
+1. **主因**：`form.addEventListener('submit', e => { e.preventDefault(); fetch('/api/login', …) })`。
+   Safari / iCloud 钥匙串靠「**浏览器原生表单提交 + 之后发生页面跳转**」识别登录，
+   fetch 提交它认不出来。Chrome 启发式宽松（会看后续跳转倒推），所以 Chrome 上
+   偶尔会弹、Safari 上从来没有。
+2. 密码框只有 `autocomplete="on"`（在 form 上，密码场景基本是废值），
+   缺 `autocomplete="current-password"`。
+3. 只有密码框没有用户名框 —— 密码管理器天生按「用户名 + 密码」配对存，
+   纯密码表单命中率低。
+
+**改动**：
+- `public/login.html`：`<form method="post" action="/api/login">`；密码框加
+  `autocomplete="current-password"`；新增一个**屏幕外**的
+  `autocomplete="username"` 固定值框（用 `left:-9999px` 而不是 `display:none`——
+  后者会被 Safari 直接忽略）；删掉 fetch，错误改由服务端重定向带回
+  （`/login.html?e=1|2|3`，页面读 query 显示）。
+- `server.js`：加 `app.use(express.urlencoded({ extended:false, limit:'1mb' }))`。
+- `src/auth.js` `handleLogin`：**按 Content-Type 分流**——
+  `req.is('json')` 为真就照旧返回 JSON（脚本与 `smoke-test` 依赖 `200 + {ok:true}`），
+  否则是浏览器表单，成功 `303 → /index.html`、失败 `303 → /login.html?e=N`。
+
+**验证**：本机起一次性实例（`_verify-login.mjs`，临时改 `.env` 用完还原）跑 11 项全过；
+线上实测 表单正确 `303 → /index.html`、表单错误 `303 → /login.html?e=1`、
+JSON 正确 `200 {"ok":true}`；线上 `smoke-test` **30 通过 / 0 失败**。
+
+**部署注意（重要）**：这次**没有**用 `deploy.sh`（git pull）。
+服务器上还压着**没进 git 的活代码**——`server.js` 多了 36 行
+（`/timing` 静态页 + Global Radar 反代 + `import http`），
+`modules/globalradar.js`、`modules/timing.js` 及对应前端文件全是 untracked。
+直接 `git checkout -f` / `git pull` 会把这些冲掉。所以只 scp 了
+`login.html` 与 `src/auth.js`，`server.js` 用补丁脚本**只插一行**并校验
+`/global-radar` 与 `/timing` 仍在。**以后动 server.js 前先看 `git status`。**
+
+**回滚**：把 `login.html` 换回 fetch 版、`auth.js` 的 `handleLogin` 改回一律 JSON 即可，
+`express.urlencoded` 留着无害。
+
 ### 待办 / 下一步候选
 
 - [x] NS 生效后验证 `https://vic-jianhua.me` 可访问（登录 + 建一条数据）
@@ -606,6 +646,10 @@ for (const m of ['todos','thoughts','words','sentences']) {
       cookie 本来还能用满 30 天。已跑 `node scripts/rotate-session-secret.mjs` 轮换密钥，
       实测旧密钥签的 cookie → 401，新密钥 → 200。**以后凡是"密码泄露"，改密码 + 轮换
       SESSION_SECRET 两步都要做。**
+- [ ] **【要紧】服务器上有一批活代码从来没进 git**：`modules/globalradar.js`、
+      `modules/timing.js`、两个对应前端文件，以及 `server.js` 里那 36 行
+      （`/timing` 静态页 + Global Radar 反代）。**VPS 一挂就全没了，GitHub 上也没有。**
+      下次动 `server.js` 之前先把这批拉回来提交。
 - [ ] **【Vic 做】把 GitHub 仓库转成 private** — `dash2080super-sketch/SELF-INTRODUCTION`
       目前是 **public**。路径：仓库页 → Settings → 最下方 Danger zone →
       **Change repository visibility** → Make private。10 秒的事，我没 token 改不了。

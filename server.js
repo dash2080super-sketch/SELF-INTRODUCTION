@@ -34,6 +34,7 @@ app.locals.db = db;
 app.locals.modules = modules;
 
 app.use(express.json({ limit: '1mb' }));
+app.use(express.urlencoded({ extended: false, limit: '1mb' })); // 登录页用真表单提交，需要解析 x-www-form-urlencoded
 app.use(cookieParser());
 
 // ---- 公开路由（authGuard 白名单） ----

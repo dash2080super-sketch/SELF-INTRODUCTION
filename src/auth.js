@@ -80,23 +80,39 @@ export function authGuard(req, res, next) {
   return res.redirect('/login.html');
 }
 
+const LOGIN_ERR = {
+  '1': '密码错误',
+  '2': '尝试次数过多，15 分钟后再试',
+  '3': '请输入密码',
+};
+
 export function handleLogin(req, res) {
   const ip = req.ip || 'unknown';
+  // 浏览器是「真表单提交」（x-www-form-urlencoded）：必须走 303 重定向，
+  // Safari / iCloud 钥匙串靠「表单提交 + 跳转」才认得出这是一次登录并弹保存。
+  // 脚本与自检（Content-Type: application/json）继续返回 JSON，
+  // 别改掉 —— smoke-test 依赖 200 + {ok:true}。
+  const wantsJson = req.is('json');
+  const fail = (status, code) =>
+    wantsJson
+      ? res.status(status).json({ error: LOGIN_ERR[code] })
+      : res.redirect(303, `/login.html?e=${code}`);
+
   if (tooManyFails(ip)) {
-    return res.status(429).json({ error: '尝试次数过多，15 分钟后再试' });
+    return fail(429, '2');
   }
   const { password } = req.body || {};
   if (typeof password !== 'string' || !password) {
-    return res.status(400).json({ error: '请输入密码' });
+    return fail(400, '3');
   }
   const ok = bcrypt.compareSync(password, config.passwordHash);
   if (!ok) {
     noteFail(ip);
-    return res.status(401).json({ error: '密码错误' });
+    return fail(401, '1');
   }
   attempts.delete(ip);
   setSessionCookie(res);
-  return res.json({ ok: true });
+  return wantsJson ? res.json({ ok: true }) : res.redirect(303, '/index.html');
 }
 
 export function handleLogout(req, res) {

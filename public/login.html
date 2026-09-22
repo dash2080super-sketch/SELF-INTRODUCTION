@@ -29,6 +29,9 @@
     border:1px solid var(--line); border-radius:10px; background:#fff; outline:none;
   }
   input:focus{border-color:var(--accent); box-shadow:0 0 0 3px rgba(47,111,235,.12)}
+  /* 屏幕外的用户名框：密码管理器按「用户名+密码」配对存，纯密码表单命中率低。
+     不能用 display:none —— 那样 Safari/iCloud 钥匙串会直接忽略这个字段。 */
+  .offscreen{position:absolute; left:-9999px; width:1px; height:1px; opacity:0; overflow:hidden}
   button{
     width:100%; margin-top:14px; padding:12px; font-size:15px; font-weight:600; color:#fff;
     background:var(--accent); border:0; border-radius:10px; cursor:pointer;
@@ -40,45 +43,31 @@
 </style>
 </head>
 <body>
-  <form class="card" id="f" autocomplete="on">
+  <form class="card" id="f" method="post" action="/api/login" autocomplete="on">
     <div class="logo">Personal Billboard</div>
     <h1>输入密码</h1>
-    <input type="password" id="pw" name="password" placeholder="密码" autofocus required>
+    <input type="text" class="offscreen" name="username" value="billboard"
+           autocomplete="username" tabindex="-1" aria-hidden="true" readonly>
+    <input type="password" id="pw" name="password" placeholder="密码"
+           autocomplete="current-password" autofocus required>
     <button type="submit" id="btn">进入</button>
     <div class="err" id="err"></div>
     <div class="foot">连续输错会被暂时挡在门外</div>
   </form>
 <script>
   const f = document.getElementById('f');
-  const pw = document.getElementById('pw');
   const btn = document.getElementById('btn');
   const err = document.getElementById('err');
 
-  f.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    err.textContent = '';
+  /* 真·表单提交（不再用 fetch 拦掉），这样 Safari / iCloud 钥匙串
+     才会认出"这是一次登录"并弹出保存密码。错误信息由服务端重定向带回。 */
+  const MSG = { '1': '密码错误', '2': '尝试次数过多，15 分钟后再试', '3': '请输入密码' };
+  const code = new URLSearchParams(location.search).get('e');
+  if (MSG[code]) err.textContent = MSG[code];
+
+  f.addEventListener('submit', () => {
     btn.disabled = true;
     btn.textContent = '检查中…';
-    try {
-      const r = await fetch('/api/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password: pw.value }),
-      });
-      const data = await r.json().catch(() => ({}));
-      if (r.ok) {
-        location.href = '/index.html';
-        return;
-      }
-      err.textContent = data.error || '登录失败';
-      pw.value = '';
-      pw.focus();
-    } catch {
-      err.textContent = '网络异常，稍后再试';
-    } finally {
-      btn.disabled = false;
-      btn.textContent = '进入';
-    }
   });
 </script>
 </body>

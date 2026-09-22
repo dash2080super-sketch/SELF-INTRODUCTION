@@ -64,6 +64,13 @@ ufw 状态：active，仅放行 22 / 443。**隧道方案不需要再开任何�
    跑完再对一次。违反过一次，见 2026-09-21 17:30 事故复盘。
 7. **Vic 自己录入的数据（to-do / 随想 / 单词 / 句子 / 自选股）属于生产数据**，
    不是测试环境。任何"顺手清一下"的念头都要先问。
+8. **push 前扫明文凭据**。本仓库挂在 GitHub 上（曾经是 public），任何密码 / token /
+   私钥 / 含凭据的配置都不许写进会被提交的文件。**连本文件也不行**——
+   2026-09-21 就是在这里写了看板密码然后推上去，泄露了一天多。
+   台账里只写"密码已换 / 已确认"，不写密码本身。
+9. **密码泄露 = 两步**：① 改密码（`scripts/set-password.js`）；
+   ② `node scripts/rotate-session-secret.mjs` + 重启，把已发出的旧 cookie 全部作废。
+   只做第 ① 步，旧 cookie 还能用满 `SESSION_DAYS` 天。
 
 ## 常用命令
 
@@ -591,8 +598,17 @@ for (const m of ['todos','thoughts','words','sentences']) {
       以及根目录草稿 `_boot.mjs` / `_t50.mjs`）挪进 `scripts/archive/`，并写了
       `scripts/archive/README.md` 说明每一类是干嘛的。`scripts/` 根下只留能复跑的。
       `.gitignore` 改为忽略所有 `_` 开头的草稿文件，避免再被误提交。
-- [ ] **【优先】换掉看板登录密码** — 明文密码曾被写进 `OPS-NOTES.md`，而本仓库是
-      **公开仓库**，已于 2026-09-21 18:15 随 push 泄露。改密码用
-      `ssh -t root@188.166.250.14 /opt/billboard/scripts/set-login-password.sh`（Vic 自己输入）
-- [ ] 决定是否重写 GitHub 历史把泄露的密码从公开仓库里抹掉（需要 force push +
-      VPS 重新对齐）。密码换了之后这件事的紧迫性下降，但仍建议做
+- [x] **换掉看板登录密码** — 2026-09-22 09:50 已换（新密码只给 Vic，**不写进任何文件**）。
+      实测：新密码 200、旧（泄露的）密码 401、错误密码 401。
+      换密码前先备份了 `.env` 到 `/root/billboard-env-before-pwrotate-<ts>`。
+- [x] **把所有旧会话踢下线** — 光改密码不够：`set-password.js` 会**沿用**旧的
+      `SESSION_SECRET`（注释里说是"免得把已登录设备踢下线"），所以泄露期间发出去的
+      cookie 本来还能用满 30 天。已跑 `node scripts/rotate-session-secret.mjs` 轮换密钥，
+      实测旧密钥签的 cookie → 401，新密钥 → 200。**以后凡是"密码泄露"，改密码 + 轮换
+      SESSION_SECRET 两步都要做。**
+- [ ] **【Vic 做】把 GitHub 仓库转成 private** — `dash2080super-sketch/SELF-INTRODUCTION`
+      目前是 **public**。路径：仓库页 → Settings → 最下方 Danger zone →
+      **Change repository visibility** → Make private。10 秒的事，我没 token 改不了。
+- [ ] 已决定**不做** git 历史重写（不 force push）。意味着 `ac2ca2c`～`d4e18d3` 这几个
+      旧提交里的明文密码**仍在仓库里**，只是仓库转 private 后不再对外。
+      如果哪天要把仓库重新公开，必须先重写历史。

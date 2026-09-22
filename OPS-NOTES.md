@@ -682,3 +682,39 @@ JSON 正确 `200 {"ok":true}`；线上 `smoke-test` **30 通过 / 0 失败**。
    本地 commit 是安全的；但任何 `git checkout -f` 都会把未推送的改动清空。
 3. VPS 本地目前领先 `origin/main` **3 个 commit**（`65f1619` n225 / `3aac480` life / `de85536` radar），
    **全都还没 push**（GitHub 部署 key 待 Vic 贴公钥）。VPS 一挂就全没了。
+
+## 2026-09-22 12:05 Global Radar 铺满屏幕（后续调整）
+
+**诉求**：雷达嵌在 billboard 里只占中间一条（main 默认 max-width:1040px），也没铺满。
+
+**实测数据（Chrome CDP，1664x905 视口）**
+| 指标 | 修前 | 修后 |
+|---|---|---|
+| `main` 宽度 | 1040px | **1600px** |
+| iframe 宽度 | 1004px | **1564px** |
+| `.tech-layout` 列 | `1fr`（被压塌） | **`1130px 380px`** |
+| K线图容器 | 0×0 | **1130×581** |
+| ECharts 实例 | null | **1128×579** |
+
+**改动**
+1. `public/css/app.css` 末尾加 `main:has(> .panel[data-id="globalradar"].active){max-width:1600px}`。
+2. `/opt/globalradar/static/index.html` 末尾注入 `#bb-embed-css` + `#bb-embed-js`：
+   仅在 iframe 嵌入时生效（referrer 含 `global-radar`，或宽度超过 screen.availWidth），
+   直接访问 `/global-radar/` 不受影响。注入内容：tech-layout 改 1fr+380px；
+   `.chart/.chart.big/.chart.huge` 高度改 `clamp(...,vh,...)` 随视口长；ResizeObserver + resize 时 `echarts.resize()`。
+
+**踩的坑（重要，同类错误犯了两次）**
+- 第一版把注释写成 `…（和 life 同理） /* billboard-embed-fill */ */` —— 注释里又开了 `/*`，
+  CSS 一吃到第一个 `*/` 就结束，多出来的 `*/` 是非法 token，**整条 :has() 规则被丢弃**，
+  所以规则「看起来写进去了」但 `main` 仍是 1040px。修法：注释里永远不要再写注释符号，
+  并加配平自检（注释数、花括号数必须相等）。
+- 同一错误在 `<style>` 注入块里又犯一次，导致 tech-layout 覆盖样式整块失效。
+  第二版改为**注入段零注释**，CSS 用 `JSON.stringify` 生成，脚本里加 `window.__BB_EMBED_OK` 便于远程断言。
+- 结论：往别人页面注入 CSS/JS 时，注释一律不写；用 id 标记 + 运行时标志位做可验证性。
+
+**验证工具**：本机 `cdp-verify2.cjs`（纯 node，手搓 WebSocket 连系统 Chrome 的 CDP，
+`Network.setCookie` 登录 → 点 tab → `Runtime.evaluate` 取跨 iframe 尺寸 → `Page.captureScreenshot`）。
+注意 agent-browser 的 win32 原生二进制在这台机器上 **os error 216**（版本不兼容），
+且 VPS 只有 458MB 内存不适合装 Chromium，所以走「系统 Chrome + CDP」这条路。
+
+**提交**：`3c6095f`（第一版）→ `dd8ce31`（修注释 bug + 重写注入段），均在 VPS 本地，未 push。

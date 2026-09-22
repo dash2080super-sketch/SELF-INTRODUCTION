@@ -453,3 +453,65 @@ main:has(.dd-grid){max-width:1400px}
   .dd-sq i{width:11px; height:11px}
   .dd-grid{grid-template-columns:1fr}
 }
+
+/* ============ n225 日经225策略 ============ */
+.n225-verdict{display:flex; align-items:center; gap:18px; flex-wrap:wrap;
+  background:var(--surface); border:1px solid var(--line); border-left:4px solid var(--muted);
+  border-radius:var(--radius); padding:16px 18px; margin-bottom:14px; box-shadow:var(--shadow)}
+.n225-verdict.up{border-left-color:var(--up)}
+.n225-verdict.down{border-left-color:var(--down)}
+.n225-verdict.warn{border-left-color:var(--warn)}
+.n225-vleft{flex:1; min-width:230px}
+.n225-vlabel{font-size:12px; color:var(--muted)}
+.n225-vaction{font-size:22px; font-weight:650; margin:2px 0 4px; letter-spacing:.01em}
+.n225-verdict.up .n225-vaction{color:var(--up)}
+.n225-verdict.down .n225-vaction{color:var(--down)}
+.n225-verdict.warn .n225-vaction{color:var(--warn)}
+.n225-vsub{font-size:12.5px; color:var(--ink-2)}
+.n225-vright{text-align:right; flex:none}
+.n225-vsize{font-size:28px; font-weight:650; font-variant-numeric:tabular-nums; line-height:1.2}
+.n225-vsize span{font-size:12px; font-weight:400; color:var(--muted); margin-left:4px}
+
+.n225-layers{display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:10px; margin-bottom:18px}
+.n225-layer{background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); padding:12px 14px}
+.n225-layer.up{border-top:3px solid var(--up)}
+.n225-layer.down{border-top:3px solid var(--down)}
+.n225-layer.warn{border-top:3px solid var(--warn)}
+.n225-lk{font-size:13px; font-weight:650; color:var(--ink); display:flex; align-items:center; gap:8px}
+.n225-badge{font-size:11px; font-weight:400; color:var(--muted);
+  background:var(--surface-2); border:1px solid var(--line-2); border-radius:6px; padding:1px 6px; margin-left:auto}
+.n225-lv{font-size:12.5px; color:var(--ink-2); margin-top:5px; line-height:1.6}
+
+.n225-sec{margin-bottom:18px}
+.n225-sec h3{font-size:14px; font-weight:650; margin:0 0 8px}
+.n225-hint{font-size:12px; color:var(--muted); margin-bottom:8px}
+.n225-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(132px,1fr)); gap:10px}
+.n225-cell{background:var(--surface); border:1px solid var(--line); border-radius:10px; padding:10px 12px}
+.n225-cell .k{font-size:11.5px; color:var(--muted)}
+.n225-cell .v{font-size:17px; font-weight:650; font-variant-numeric:tabular-nums; margin-top:3px}
+.n225-cell .v.up{color:var(--up)}
+.n225-cell .v.down{color:var(--down)}
+.n225-cell .v.warn{color:var(--warn)}
+.n225-cell .v.flat{color:var(--ink)}
+
+.n225-twrap{overflow-x:auto; border:1px solid var(--line); border-radius:var(--radius); background:var(--surface)}
+.n225-table{width:100%; border-collapse:collapse; font-size:12.5px; font-variant-numeric:tabular-nums}
+.n225-table th,.n225-table td{padding:8px 10px; border-bottom:1px solid var(--line-2); text-align:left; white-space:nowrap}
+.n225-table thead th{background:var(--surface-2); color:var(--ink-2); font-weight:600}
+.n225-table tbody tr:last-child td{border-bottom:none}
+.n225-table td.up{color:var(--up)}
+.n225-table td.down{color:var(--down)}
+.n225-table td.warn{color:var(--warn)}
+
+.n225-foot{margin:4px 0 18px; font-size:12px; color:var(--muted)}
+
+.n225-note{margin-top:22px; background:var(--surface); border:1px solid var(--line);
+  border-radius:var(--radius); padding:14px 16px; font-size:12.5px; color:var(--ink-2); line-height:1.75}
+.n225-note b{color:var(--ink)}
+.n225-note ul{margin:6px 0 0; padding-left:18px}
+.n225-note li{margin:4px 0}
+
+@media (max-width:760px){
+  .n225-vright{text-align:left}
+  .n225-grid{grid-template-columns:repeat(auto-fill,minmax(110px,1fr))}
+}

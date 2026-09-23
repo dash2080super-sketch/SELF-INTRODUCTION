@@ -3,6 +3,7 @@ import cookieParser from 'cookie-parser';
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
+import http from 'node:http';
 import { config, assertConfig } from './src/config.js';
 import { initDB } from './src/db.js';
 import { loadModules, findModule, publicMeta } from './src/modules.js';
@@ -14,6 +15,9 @@ import { drawdownRouter } from './src/drawdown-api.js';
 import { n225Router } from './src/n225-api.js';
 import { dividendRouter } from './src/dividend-api.js';
 import { dividend50Router } from './src/dividend50-api.js';
+import { lifeRouter, initLifeTables } from './src/life-api.js';
+import { swingRouter } from './src/swing-api.js';
+import { initSwingTables } from './src/swing-tables.js';
 import { etfRouter } from './src/etf-api.js';
 
 // A股择时看板：一个完全独立的静态页（自带样式与 ECharts），
@@ -25,6 +29,8 @@ assertConfig();
 
 const modules = await loadModules();
 const db = initDB(modules);
+initLifeTables(db);
+initSwingTables(db);
 for (const m of modules) {
   if (!m.virtual) m.router = createCrudRouter(m);
 }
@@ -58,6 +64,8 @@ app.use('/api/n225', n225Router);
 // dividend50 放前面：两条前缀都挂在 /api 下，先精确后宽松更省心
 app.use('/api/dividend50', dividend50Router);
 app.use('/api/dividend', dividendRouter);
+app.use('/api/life', lifeRouter);
+app.use('/api/swing', swingRouter);
 // ETF/场内标的看板：抓东财（行情/K线/资金流/净值/概况），页面在 /etf/index.html
 app.use('/api/etf', etfRouter);
 
@@ -110,6 +118,36 @@ const ASSET_V = computeAssetVersion();
 app.use('/timing', express.static(TIMING_DIR, { maxAge: 0, index: 'index.html', etag: true }));
 
 // 首页/登录页走这里，把占位符替换掉再发出去（放在 static 之前）
+// Global Radar：独立的 Python 服务（127.0.0.1:8787，systemd: globalradar.service）。
+// 挂在 /global-radar 下，放在 authGuard 之后 —— 必须登录才能看，和 /timing 一个待遇。
+// 用 node:http 手写一个最小反代，不引新依赖（node_modules 里没有 http-proxy-*）。
+const GR_UPSTREAM = process.env.GR_UPSTREAM || 'http://127.0.0.1:8787';
+app.use('/global-radar', (req, res) => {
+  // req.url 已被 express 剥掉 /global-radar 前缀，直接拼到上游即是最终路径
+  const target = new URL(req.url || '/', GR_UPSTREAM);
+  const headers = { ...req.headers };
+  delete headers.host;
+  delete headers.connection;
+  const up = http.request(target, { method: req.method, headers }, (pres) => {
+    res.status(pres.statusCode || 502);
+    for (const [k, v] of Object.entries(pres.headers)) {
+      if (k === 'transfer-encoding' || k === 'connection') continue;
+      res.set(k, v);
+    }
+    pres.pipe(res);
+  });
+  up.on('error', (e) => {
+    console.error('[billboard] globalradar 反代失败:', e.message);
+    if (!res.headersSent) res.status(502).type('text/plain').send('Global Radar 未运行（502）');
+    else res.end();
+  });
+  req.pipe(up);
+});
+
+// 生活工作台（日常集）：一份自包含的单文件页面，放在独立目录里，
+// 避免它自带的 CSS 和 app.css 互相污染。放在 authGuard 之后 —— 必须登录才能看。
+const LIFE_DIR = process.env.LIFE_DIR || '/opt/life-board';
+app.use('/life', express.static(LIFE_DIR, { maxAge: 0, index: 'index.html', etag: true }));
 app.get(/^\/index\.html$/, (req, res, next) => {
   fs.readFile(path.join(config.publicDir, 'index.html'), 'utf8', (err, html) => {
     if (err) return next(err);

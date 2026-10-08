@@ -413,19 +413,55 @@ async function fetchChinabondDay(ymd) {
   }
 }
 
+
+/** 兜底源：东方财富「中美国债收益率」(type=RPTA_WEB_TREASURYYIELD)。
+ *  字段 EMM00166466 = 中国国债收益率10年。假期/未发布日该字段为 null，
+ *  所以往前逐条找最近一条非空值（最多看 30 条）。 */
+async function fetchAnchorEastmoney() {
+  try {
+    const url =
+      'https://datacenter.eastmoney.com/api/data/get' +
+      '?type=RPTA_WEB_TREASURYYIELD&sty=ALL&st=SOLAR_DATE&sr=-1' +
+      '&token=894050c76af8597a853f5b408b759f5d&p=1&ps=30&pageNo=1&pageNum=1';
+    const txt = await getText(url, {
+      headers: { Referer: 'https://data.eastmoney.com/cjsj/zmgzsyl.html' },
+    });
+    const d = JSON.parse(txt);
+    const rows = d?.result?.data || [];
+    for (const r of rows) {
+      const v = Number(r.EMM00166466);
+      if (Number.isFinite(v) && v > 0 && v < 10) {
+        const date = String(r.SOLAR_DATE || '').slice(0, 10);
+        return { y10: +(+v).toFixed(4), date, src: '东方财富·中美国债收益率', at: Date.now() };
+      }
+    }
+    return null;
+  } catch (e) {
+    stats.errors++;
+    stats.lastError = '东财国债锚: ' + e.message;
+    return null;
+  }
+}
+
 export async function fetchAnchor() {
   return once('anchor', async () => {
-    // 中债是日终数据：当天可能还没发布（比如早上），所以要往前找最近的工作日。
-    // 串行往前试每天要 ~2.5 秒，试两次就 5 秒 —— 改成前 3 个候选工作日并发打，
-    // 谁先给出最新的日期就用谁，冷启动从 ~5 秒降到 ~2.5 秒。
+    // 中债是日终数据：当天可能还没发布（比如早上）；长假（国庆/春节）会连续多日休市，
+    // 若只看最近 3 个工作日，假期里全是空表 → 锚取不到 → 全版块 nodata（2026 国庆踩过）。
+    // 这里把候选窗口拉到 16 个工作日（≈ 3 周），覆盖任意长假缺口；
+    // 仍按「并发」打（冷启动约 2.5s），取日期最新且有数据的那条。
     const cands = [];
     let d = new Date().toISOString().slice(0, 10);
-    for (let i = 0; i < 20 && cands.length < 3; i++) {
+    for (let i = 0; i < 60 && cands.length < 16; i++) {
       if (!isWeekend(d)) cands.push(d);
       d = shiftDay(d, -1);
     }
     const results = (await Promise.all(cands.map(fetchChinabondDay))).filter(Boolean);
-    if (!results.length) return null;
+    if (!results.length) {
+      // 中债抽风（常只回空表头）时，用东方财富兜底，避免整页判定「数据不足」
+      const em = await fetchAnchorEastmoney();
+      if (em) return em;
+      return null;
+    }
     // 取日期最新的那条（用请求的曲线日期比较，比返回文本里的日期可靠）
     results.sort((a, b) => b.curveDate.localeCompare(a.curveDate));
     return results[0];

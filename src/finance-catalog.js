@@ -9,6 +9,8 @@
  *   bands     分档着色（按数值）。c: calm=冷静 warn=注意 hot=警戒
  *   dir       'up-good'(数值上行=风险偏好改善) / 'up-bad'(上行=风险上升) / 'neutral'
  *   manual    无自动源时的手动录入配置（AAII / NAAIM / McClellan / Hindenburg）
+ *   chgUnit   涨跌的展示单位。默认按百分比；收益率类指标写 'bp'（1bp = 0.01 个百分点），
+ *             因为利率的"百分比变化"会被读错一个数量级。
  *   ratio     派生比价 { num, den, scale, label }：把 num 腿 ÷ den 腿 × scale 当作展示值。
  *             用于"比价本身才是信号"的指标（信用利差、市场广度）。取不到分母时自动退回显示原始两腿。
  *   note      详细注解，前端直接展示
@@ -573,6 +575,20 @@ export const ZONES = [
         srcNote: 'HKEX · 实时',
       },
       {
+        id: 'hkbank',
+        name: '香港银行指数',
+        en: 'CSI HK Bank Investment Index (930792) · 南方东英 ETF 3037.HK',
+        legs: [{ label: 'ETF 3037', yahoo: '3037.HK' }],
+        dec: 2,
+        unit: '',
+        dir: 'up-good',
+        bands: [{ max: 1e9, label: '港股通银行 · 高股息', c: B.calm }],
+        note: `中证指数公司的「香港银行」指数（代码 930792，港元计价），选取港股通范围内的银行股，是港股银行板块的体温计——汇丰、建行、工行、中行、渣打、招行等 20 只。港股银行是典型的高股息、低估值、类固收资产，在低利率和资产荒环境里常被险资和公募当成压舱石。
+<b>看什么：</b>它和 A 股银行不是一回事——港股银行里汇丰、渣打这类纯外资行占比很高，受全球美元流动性和香港本地利率影响更大；建行/工行/中行是 H 股，还叠加 AH 溢价和南向资金流向。
+<b>数据源说明：</b>中证指数本身的盘中点位 Yahoo/CNBC 都没有，本站用跟踪它的香港 ETF（南方东英 3037.HK）实时价代替——ETF 价格和指数点位不是同一个数，但涨跌幅一致，看变化就够了。`,
+        srcNote: 'Yahoo Finance · 3037.HK（跟踪中证香港银行投资指数 930792）',
+      },
+      {
         id: 'dax',
         name: 'DAX 德国',
         en: 'DAX 40 / DAX Futures',
@@ -597,18 +613,18 @@ export const ZONES = [
         id: 'cac',
         name: 'CAC 40 法国',
         en: 'CAC 40 / CAC 40 Future',
-        legs: [
-          { label: '现货', cnbc: '.CAC', yahoo: '^FCHI' },
-          { label: '期货', cnbc: '@FCE.1' },
-        ],
+        // 期货腿（cnbc '@FCE.1'）已移除：2026-10-01 实测 CNBC 对 @FCE.1 返回 code=None、字段全空，
+        // 取数器拿不到就不写缓存，页面上这条腿是静默消失的（无任何报错），比没有更糟。
+        // TradingView 的 EURONEXT:CAC1! 同样取不到。要补期货请先看 OPS-NOTES，别直接把死符号加回来。
+        legs: [{ label: '现货', cnbc: '.CAC', yahoo: '^FCHI' }],
         dec: 2,
         unit: '',
         dir: 'up-good',
         bands: [{ max: 1e9, label: '奢侈品 × 中国需求', c: B.calm }],
         note: `法国 40 家最大公司。和 DAX 的产业结构差别很大——<b>奢侈品（LVMH、爱马仕、开云）、能源（道达尔）、银行</b>权重高，工业制造占比低得多。
 <b>所以它对什么敏感：</b>中国消费需求。奢侈品在中国的销售占比极高，所以 CAC 某种程度上是中国高端消费的代理指标。中国经济数据或消费预期变化，CAC 的反应常比 DAX 更直接。
-<b>期货（FCE）的价值：</b>欧洲期货在美股时段仍在交易，可以用来观察欧洲事件（ECB 决议、法国选举、财政危机）的即时定价，不用等到第二天欧洲开盘。`,
-        srcNote: 'Euronext · 实时',
+<b>只有现货一条腿：</b>本站原来的 CAC 期货（FCE）数据源已经取不到数（CNBC 对该符号返回空），所以撤掉了。想看欧洲盘在美股时段的即时定价，用 DAX 期货（本站可取，约 15 分钟延迟）。`,
+        srcNote: 'Euronext · 实时（期货源已失效，暂缺）',
       },
       {
         id: 'ftse',
@@ -654,6 +670,9 @@ export const ZONES = [
         ],
         dec: 3,
         unit: '%',
+        // 收益率这类指标，涨跌必须用 bp（基点）而不是百分比。
+        // 显示 "-0.40%" 会被读成 -40bp，实际那是 -2.1bp 的相对变化，差了近 20 倍。
+        chgUnit: 'bp',
         dir: 'up-bad',
         bands: [{ max: 1e9, label: '看曲线形状', c: B.warn }],
         note: `美国国债收益率曲线。看单个数字意义不大，<b>看形状</b>才有信息。
@@ -681,6 +700,9 @@ export const ZONES = [
         ],
         dec: 3,
         unit: '%',
+        // 收益率这类指标，涨跌必须用 bp（基点）而不是百分比。
+        // 显示 "-0.40%" 会被读成 -40bp，实际那是 -2.1bp 的相对变化，差了近 20 倍。
+        chgUnit: 'bp',
         dir: 'up-bad',
         bands: [{ max: 1e9, label: '全球流动性总开关', c: B.warn }],
         note: `<b>JP10Y 是全球流动性的总开关之一</b>，重要性远超日本本国市场。
@@ -700,6 +722,9 @@ export const ZONES = [
         ],
         dec: 3,
         unit: '%',
+        // 收益率这类指标，涨跌必须用 bp（基点）而不是百分比。
+        // 显示 "-0.40%" 会被读成 -40bp，实际那是 -2.1bp 的相对变化，差了近 20 倍。
+        chgUnit: 'bp',
         dir: 'up-bad',
         bands: [{ max: 1e9, label: '利差驱动汇率', c: B.warn }],
         note: `德国国债（Bund）是<b>欧元区的安全资产基准</b>，信用等级最高、流动性最好，也是整个欧洲的定价锚。英国金边债券（Gilt）是英国基准。

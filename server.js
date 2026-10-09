@@ -13,12 +13,14 @@ import { kvRouter } from './src/kv.js';
 import { financeRouter } from './src/finance-api.js';
 import { drawdownRouter } from './src/drawdown-api.js';
 import { n225Router } from './src/n225-api.js';
+import { ndxspxRouter } from './src/ndxspx-api.js';
 import { dividendRouter } from './src/dividend-api.js';
 import { dividend50Router } from './src/dividend50-api.js';
 import { lifeRouter, initLifeTables } from './src/life-api.js';
 import { swingRouter } from './src/swing-api.js';
 import { initSwingTables } from './src/swing-tables.js';
 import { etfRouter } from './src/etf-api.js';
+import clipimgRouter from './src/clipimg-api.js';
 
 // A股择时看板：一个完全独立的静态页（自带样式与 ECharts），
 // 由 modules/timing.js 这个 virtual 模块用 iframe 嵌进来。
@@ -61,6 +63,8 @@ app.use('/api/finance', financeRouter);
 app.use('/api/drawdown', drawdownRouter);
 // N225策略：不抓上游，直接读 cron 落在 /opt/nikkei/latest.json 的判定结果
 app.use('/api/n225', n225Router);
+// NASDAQ & S&P 加仓决策：不抓上游，直接读 cron 落在 /opt/ndxspx/latest.json 的判定结果
+app.use('/api/ndxspx', ndxspxRouter);
 // dividend50 放前面：两条前缀都挂在 /api 下，先精确后宽松更省心
 app.use('/api/dividend50', dividend50Router);
 app.use('/api/dividend', dividendRouter);
@@ -68,6 +72,7 @@ app.use('/api/life', lifeRouter);
 app.use('/api/swing', swingRouter);
 // ETF/场内标的看板：抓东财（行情/K线/资金流/净值/概况），页面在 /etf/index.html
 app.use('/api/etf', etfRouter);
+app.use('/api/clipimg', clipimgRouter);
 
 app.use('/api/m/:moduleId', (req, res, next) => {
   const mod = findModule(modules, req.params.moduleId);

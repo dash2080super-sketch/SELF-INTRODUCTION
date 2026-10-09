@@ -1,0 +1,355 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>贴图收藏夹</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+    font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: linear-gradient(180deg, #f7fafd 0%, #f4f5f7 62%, #f7f8fa 100%);
+    color: #1f2937;
+    padding: 16px 18px 40px;
+  }
+  .bar {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px;
+    background: rgba(255,255,255,.9); border: 1px solid #e5e7eb;
+    border-radius: 10px; padding: 12px 16px; margin-bottom: 14px;
+  }
+  .bar h1 { font-size: 16px; font-weight: 700; }
+  .hint { font-size: 12.5px; color: #6b7280; }
+  .hint b { color: #1d4ed8; }
+  .hint label.pick {
+    color: #1d4ed8; cursor: pointer; text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+  .stat { margin-left: auto; font-size: 12px; color: #9ca3af; white-space: nowrap; }
+  .grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+    gap: 12px;
+  }
+  .cell {
+    position: relative; background: #fff; border: 1px solid #e5e7eb;
+    border-radius: 10px; overflow: hidden; cursor: zoom-in;
+    transition: box-shadow .15s, transform .15s;
+  }
+  .cell:hover { box-shadow: 0 4px 14px rgba(31,41,55,.12); transform: translateY(-1px); }
+  .cell img { width: 100%; height: 158px; object-fit: cover; display: block; background: #f3f4f6; }
+  .cell .cap {
+    display: flex; justify-content: space-between; gap: 8px;
+    padding: 6px 10px; font-size: 11.5px; color: #6b7280;
+  }
+  .cell .del {
+    position: absolute; top: 6px; right: 6px; width: 22px; height: 22px;
+    border: 0; border-radius: 50%; background: rgba(31,41,55,.55); color: #fff;
+    font-size: 13px; line-height: 22px; cursor: pointer; opacity: 0;
+    transition: opacity .15s;
+  }
+  .cell:hover .del { opacity: 1; }
+  .cell .del:hover { background: #dc2626; }
+  .empty {
+    grid-column: 1 / -1; text-align: center; color: #9ca3af;
+    padding: 70px 0; font-size: 14px;
+    border: 2px dashed #d1d5db; border-radius: 12px; background: rgba(255,255,255,.5);
+  }
+  .drop {
+    display: none; position: fixed; inset: 0; z-index: 50;
+    background: rgba(29,78,216,.08); backdrop-filter: blur(2px);
+    border: 3px dashed #1d4ed8; border-radius: 14px;
+    align-items: center; justify-content: center;
+    font-size: 20px; font-weight: 700; color: #1d4ed8;
+  }
+  .drop.on { display: flex; }
+  .toast {
+    position: fixed; left: 50%; bottom: 26px; transform: translateX(-50%);
+    background: #1f2937; color: #fff; font-size: 13px;
+    padding: 9px 18px; border-radius: 8px; opacity: 0;
+    transition: opacity .2s; pointer-events: none; z-index: 60; max-width: 80vw;
+  }
+  .toast.on { opacity: .95; }
+  .lb {
+    position: fixed; inset: 0; z-index: 70; background: rgba(17,24,39,.86);
+    display: flex; flex-direction: column;
+  }
+  .lb[hidden] { display: none; }
+  .lb-bar {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 10px 16px; color: #e5e7eb; font-size: 13px;
+  }
+  .lb-bar a, .lb-bar button {
+    margin-left: 10px; padding: 5px 14px; border-radius: 7px; border: 0;
+    background: rgba(255,255,255,.14); color: #fff; font-size: 13px;
+    cursor: pointer; text-decoration: none; display: inline-block;
+  }
+  .lb-bar a:hover, .lb-bar button:hover { background: rgba(255,255,255,.28); }
+  .lb-bar button.del { background: rgba(220,38,38,.85); }
+  .lb-img { flex: 1; min-height: 0; object-fit: contain; padding: 0 16px 16px; width: 100%; }
+  @media (max-width: 640px) {
+    body { padding: 10px 10px 40px; }
+    .grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; }
+    .cell img { height: 120px; }
+  }
+</style>
+</head>
+<body>
+
+<header class="bar">
+  <h1>📌 贴图收藏夹</h1>
+  <div class="hint">在页面任意位置 <b>Ctrl+V</b> 粘贴截图 · 支持拖拽 · 或 <label class="pick">点击选择文件<input id="pick" type="file" accept="image/*" multiple hidden></label></div>
+  <div class="stat" id="stat"></div>
+</header>
+
+<div class="grid" id="grid"></div>
+<div class="drop" id="drop">松手即收藏</div>
+<div class="toast" id="toast"></div>
+
+<div class="lb" id="lb" hidden>
+  <div class="lb-bar">
+    <span id="lb-info"></span>
+    <span>
+      <a id="lb-dl" download>下载</a>
+      <button class="del" id="lb-del">删除</button>
+      <button id="lb-x">关闭</button>
+    </span>
+  </div>
+  <img class="lb-img" id="lb-img" alt="">
+</div>
+
+<script>
+(function () {
+  'use strict';
+  var grid = document.getElementById('grid');
+  var stat = document.getElementById('stat');
+  var toastEl = document.getElementById('toast');
+  var drop = document.getElementById('drop');
+  var pick = document.getElementById('pick');
+  var lb = document.getElementById('lb');
+  var lbImg = document.getElementById('lb-img');
+  var lbInfo = document.getElementById('lb-info');
+  var lbDl = document.getElementById('lb-dl');
+  var items = [];
+  var toastTimer = null;
+
+  function toast(msg) {
+    toastEl.textContent = msg;
+    toastEl.classList.add('on');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { toastEl.classList.remove('on'); }, 2200);
+  }
+
+  function fmtSize(n) {
+    if (n >= 1048576) return (n / 1048576).toFixed(1) + ' MB';
+    if (n >= 1024) return Math.round(n / 1024) + ' KB';
+    return n + ' B';
+  }
+
+  function fmtTime(ts) {
+    var d = new Date(ts);
+    function p(x) { return (x < 10 ? '0' : '') + x; }
+    return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) +
+      ' ' + p(d.getHours()) + ':' + p(d.getMinutes());
+  }
+
+  function fileUrl(it) { return '/api/clipimg/' + it.id + '/file'; }
+
+  function card(it) {
+    var cell = document.createElement('div');
+    cell.className = 'cell';
+    var img = document.createElement('img');
+    img.loading = 'lazy';
+    img.src = fileUrl(it);
+    img.alt = it.id;
+    img.addEventListener('click', function () { openLb(it); });
+    var cap = document.createElement('div');
+    cap.className = 'cap';
+    cap.innerHTML = '<span>' + fmtTime(it.ts) + '</span><span>' + fmtSize(it.size) + '</span>';
+    var del = document.createElement('button');
+    del.className = 'del';
+    del.title = '删除';
+    del.textContent = '×';
+    del.addEventListener('click', function (e) {
+      e.stopPropagation();
+      if (!confirm('删除这张贴图？不可恢复。')) return;
+      fetch('/api/clipimg/' + it.id, { method: 'DELETE' }).then(function (r) {
+        if (!r.ok) { toast('删除失败'); return; }
+        items = items.filter(function (x) { return x.id !== it.id; });
+        closeLb();
+        render();
+        toast('已删除');
+      });
+    });
+    cell.appendChild(img);
+    cell.appendChild(cap);
+    cell.appendChild(del);
+    return cell;
+  }
+
+  function render() {
+    grid.innerHTML = '';
+    if (!items.length) {
+      var empty = document.createElement('div');
+      empty.className = 'empty';
+      empty.textContent = '还没有收藏 · 截个图按 Ctrl+V 贴进来试试';
+      grid.appendChild(empty);
+    } else {
+      items.forEach(function (it) { grid.appendChild(card(it)); });
+    }
+    stat.textContent = items.length ? items.length + ' 张 · 共 ' +
+      fmtSize(items.reduce(function (s, x) { return s + x.size; }, 0)) : '';
+  }
+
+  /* ---------- 灯箱 ---------- */
+  function openLb(it) {
+    lbImg.src = fileUrl(it);
+    lbInfo.textContent = fmtTime(it.ts) + ' · ' + fmtSize(it.size) + ' · ' + it.id + '.' + it.ext;
+    lbDl.href = fileUrl(it);
+    lbDl.setAttribute('download', it.id + '.' + it.ext);
+    lbDl.dataset.id = it.id;
+    lb.hidden = false;
+  }
+  function closeLb() { lb.hidden = true; lbImg.src = ''; }
+  document.getElementById('lb-x').addEventListener('click', closeLb);
+  lb.addEventListener('click', function (e) { if (e.target === lb) closeLb(); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeLb(); });
+  document.getElementById('lb-del').addEventListener('click', function () {
+    var id = lbDl.dataset.id;
+    var it = items.find(function (x) { return x.id === id; });
+    if (it) {
+      if (!confirm('删除这张贴图？不可恢复。')) return;
+      fetch('/api/clipimg/' + id, { method: 'DELETE' }).then(function (r) {
+        if (!r.ok) { toast('删除失败'); return; }
+        items = items.filter(function (x) { return x.id !== id; });
+        closeLb();
+        render();
+        toast('已删除');
+      });
+    }
+  });
+
+  /* ---------- 压缩：大图缩到 1800px 转 JPEG，小图/GIF 原样收 ---------- */
+  function extFromType(t) {
+    if (/png/i.test(t)) return 'png';
+    if (/webp/i.test(t)) return 'webp';
+    if (/gif/i.test(t)) return 'gif';
+    if (/bmp/i.test(t)) return 'bmp';
+    return 'jpg';
+  }
+
+  function downscale(file) {
+    return new Promise(function (resolve) {
+      var url = URL.createObjectURL(file);
+      var img = new Image();
+      img.onload = function () {
+        URL.revokeObjectURL(url);
+        var MAX = 1800;
+        var w = img.naturalWidth, h = img.naturalHeight;
+        var k = Math.min(1, MAX / Math.max(w, h));
+        var cv = document.createElement('canvas');
+        cv.width = Math.round(w * k);
+        cv.height = Math.round(h * k);
+        var cx = cv.getContext('2d');
+        cx.fillStyle = '#ffffff';
+        cx.fillRect(0, 0, cv.width, cv.height);
+        cx.drawImage(img, 0, 0, cv.width, cv.height);
+        cv.toBlob(function (b) {
+          resolve(b && b.size < file.size ? { blob: b, ext: 'jpg' } : { blob: file, ext: extFromType(file.type) });
+        }, 'image/jpeg', 0.88);
+      };
+      img.onerror = function () { URL.revokeObjectURL(url); resolve({ blob: file, ext: extFromType(file.type) }); };
+      img.src = url;
+    });
+  }
+
+  async function process(file) {
+    if (file.type === 'image/gif') return { blob: file, ext: 'gif' };
+    if (file.size <= 1536 * 1024) return { blob: file, ext: extFromType(file.type) };
+    try { return await downscale(file); }
+    catch (e) { return { blob: file, ext: extFromType(file.type) }; }
+  }
+
+  async function handleFiles(files) {
+    var imgs = Array.prototype.filter.call(files, function (f) {
+      return f && f.type && f.type.indexOf('image/') === 0;
+    });
+    if (!imgs.length) { toast('剪贴板/拖入的内容里没有图片'); return; }
+    for (var i = 0; i < imgs.length; i++) {
+      var f = imgs[i];
+      toast('收藏中 ' + (i + 1) + '/' + imgs.length + ' …');
+      try {
+        var p = await process(f);
+        var r = await fetch('/api/clipimg?ext=' + p.ext, {
+          method: 'POST',
+          headers: { 'Content-Type': f.type || 'application/octet-stream' },
+          body: p.blob,
+        });
+        if (r.status === 401) { toast('请先登录小破站'); return; }
+        if (!r.ok) { toast('上传失败（' + r.status + '）'); continue; }
+        var entry = await r.json();
+        items.unshift(entry);
+        render();
+      } catch (e) {
+        toast('上传失败：网络异常');
+      }
+    }
+    toast('收藏完成 ✔');
+  }
+
+  /* ---------- 三种入口：粘贴 / 拖拽 / 选文件 ---------- */
+  document.addEventListener('paste', function (e) {
+    var files = [];
+    var cb = e.clipboardData;
+    if (!cb) return;
+    for (var i = 0; i < cb.items.length; i++) {
+      if (cb.items[i].type && cb.items[i].type.indexOf('image/') === 0) {
+        var f = cb.items[i].getAsFile();
+        if (f) files.push(f);
+      }
+    }
+    if (files.length) { e.preventDefault(); handleFiles(files); }
+  });
+
+  var dragDepth = 0;
+  document.addEventListener('dragenter', function (e) {
+    e.preventDefault();
+    dragDepth++;
+    drop.classList.add('on');
+  });
+  document.addEventListener('dragleave', function (e) {
+    e.preventDefault();
+    dragDepth--;
+    if (dragDepth <= 0) { dragDepth = 0; drop.classList.remove('on'); }
+  });
+  document.addEventListener('dragover', function (e) { e.preventDefault(); });
+  document.addEventListener('drop', function (e) {
+    e.preventDefault();
+    dragDepth = 0;
+    drop.classList.remove('on');
+    if (e.dataTransfer && e.dataTransfer.files.length) handleFiles(e.dataTransfer.files);
+  });
+
+  pick.addEventListener('change', function () {
+    if (pick.files.length) handleFiles(pick.files);
+    pick.value = '';
+  });
+
+  /* ---------- 启动 ---------- */
+  (async function boot() {
+    try {
+      var r = await fetch('/api/clipimg');
+      if (r.status === 401) {
+        grid.innerHTML = '<div class="empty">请先登录小破站，再回到本页。</div>';
+        return;
+      }
+      var data = await r.json();
+      items = data.items || [];
+      render();
+    } catch (e) {
+      grid.innerHTML = '<div class="empty">加载失败，请刷新重试。</div>';
+    }
+  })();
+})();
+</script>
+</body>
+</html>

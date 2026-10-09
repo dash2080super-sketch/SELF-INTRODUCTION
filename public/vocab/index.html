@@ -1,0 +1,514 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>词汇实验室</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='13' font-size='13'>🔬</text></svg>">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { min-height: 100%; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", "Segoe UI", sans-serif;
+    background: linear-gradient(180deg, #f7fafd 0%, #f4f5f7 62%, #f7f8fa 100%);
+    color: #1f2937;
+    padding: 16px 18px 44px;
+    -webkit-text-size-adjust: 100%;
+  }
+  a { color: #1d4ed8; text-decoration: none; }
+  a:hover { text-decoration: underline; text-underline-offset: 2px; }
+
+  /* ---------- 顶栏 ---------- */
+  .bar {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px;
+    background: rgba(255,255,255,.92); border: 1px solid #e5e7eb;
+    border-radius: 10px; padding: 12px 16px; margin-bottom: 12px;
+  }
+  .bar h1 { font-size: 16px; font-weight: 700; white-space: nowrap; }
+  .search { display: flex; gap: 8px; flex: 1 1 320px; min-width: 0; }
+  .search input {
+    flex: 1 1 auto; min-width: 0; font-size: 14px; padding: 8px 12px;
+    border: 1px solid #d1d5db; border-radius: 8px; background: #fff; color: inherit;
+  }
+  .search input:focus { outline: 2px solid #bfdbfe; border-color: #60a5fa; }
+  .search button {
+    flex: 0 0 auto; font-size: 14px; padding: 8px 18px; border: 0; border-radius: 8px;
+    background: #1d4ed8; color: #fff; cursor: pointer; font-weight: 600;
+  }
+  .search button:hover { background: #1e40af; }
+  .search button:disabled { opacity: .55; cursor: default; }
+  .hint { font-size: 12px; color: #9ca3af; }
+
+  .recent { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 12px; }
+  .recent:empty { display: none; }
+  .recent b { font-size: 11.5px; color: #9ca3af; font-weight: 500; align-self: center; margin-right: 2px; }
+  .chip {
+    font-size: 12px; padding: 3px 10px; border-radius: 999px;
+    background: #fff; border: 1px solid #e5e7eb; color: #4b5563;
+    cursor: pointer; font-family: inherit;
+  }
+  .chip:hover { border-color: #93c5fd; color: #1d4ed8; }
+
+  /* ---------- 主体 ---------- */
+  .grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; align-items: start; }
+  .col { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+  .card { background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; padding: 14px 16px; min-width: 0; }
+  .card > h3 { font-size: 12px; font-weight: 600; color: #9ca3af; letter-spacing: .04em; text-transform: uppercase; margin-bottom: 10px; }
+
+  .empty {
+    grid-column: 1 / -1; text-align: center; color: #9ca3af;
+    padding: 64px 0; font-size: 14px;
+    border: 2px dashed #d1d5db; border-radius: 12px; background: rgba(255,255,255,.55);
+  }
+
+  /* ---------- 词头 ---------- */
+  .head-word { font-size: 30px; font-weight: 700; line-height: 1.15; word-break: break-word; }
+  .pron { display: flex; flex-wrap: wrap; gap: 8px 18px; margin-top: 10px; align-items: center; }
+  .pron-item { display: flex; align-items: center; gap: 7px; font-size: 14px; color: #374151; }
+  .pron-flag {
+    font-size: 10px; font-weight: 700; color: #6b7280; background: #f3f4f6;
+    border-radius: 4px; padding: 2px 5px; letter-spacing: .05em;
+  }
+  .pron-play {
+    width: 26px; height: 26px; border-radius: 50%; border: 1px solid #bfdbfe; background: #eff6ff;
+    color: #1d4ed8; cursor: pointer; font-size: 11px; line-height: 1; display: inline-flex;
+    align-items: center; justify-content: center; padding: 0;
+  }
+  .pron-play:hover { background: #dbeafe; }
+  .pron-play:disabled { opacity: .4; cursor: default; }
+  .forms { margin-top: 10px; font-size: 13px; color: #6b7280; }
+  .forms b { color: #374151; font-weight: 600; }
+
+  /* ---------- 释义 ---------- */
+  .lead { font-size: 14.5px; line-height: 1.75; color: #1f2937; }
+  .longtxt { font-size: 13.5px; line-height: 1.75; color: #4b5563; margin-top: 10px; }
+  .toggle { background: none; border: 0; color: #1d4ed8; cursor: pointer; font-size: 12.5px; padding: 6px 0 0; font-family: inherit; }
+  .toggle:hover { text-decoration: underline; }
+
+  /* ---------- 义项 ---------- */
+  .sense { padding: 11px 0; border-top: 1px solid #f3f4f6; }
+  .sense:first-of-type { border-top: 0; padding-top: 0; }
+  .sense-top { display: flex; gap: 8px; align-items: baseline; }
+  .sense-no { flex: 0 0 auto; font-size: 12px; color: #9ca3af; font-variant-numeric: tabular-nums; min-width: 16px; }
+  .sense-def { font-size: 14px; line-height: 1.65; }
+  .pos {
+    display: inline-block; font-size: 11px; font-style: italic; color: #6b7280;
+    background: #f3f4f6; border-radius: 4px; padding: 1px 6px; margin-right: 6px;
+  }
+  .syn { margin-top: 6px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  .syn i { font-size: 11.5px; color: #9ca3af; font-style: normal; }
+  .syn a, .syn span.s {
+    font-size: 12.5px; padding: 2px 8px; border-radius: 6px;
+    background: #f0f7ff; border: 1px solid #dbeafe; color: #1d4ed8;
+  }
+  .sense-ex { margin-top: 7px; font-size: 13px; color: #6b7280; line-height: 1.6; padding-left: 10px; border-left: 2px solid #e5e7eb; }
+
+  /* ---------- 例句 ---------- */
+  .ex-head { display: flex; flex-wrap: wrap; gap: 8px 10px; align-items: center; margin-bottom: 4px; }
+  .ex-head h3 { margin: 0; font-size: 12px; font-weight: 600; color: #9ca3af; letter-spacing: .04em; text-transform: uppercase; }
+  .ex-head select {
+    font-size: 12.5px; padding: 4px 8px; border: 1px solid #d1d5db; border-radius: 6px;
+    background: #fff; color: inherit; font-family: inherit; cursor: pointer;
+  }
+  .ex-count { font-size: 12px; color: #9ca3af; margin-left: auto; }
+  .ex { padding: 12px 0; border-top: 1px solid #f3f4f6; }
+  .ex:first-of-type { border-top: 0; }
+  .ex p { font-size: 14px; line-height: 1.7; }
+  .ex p strong { font-weight: 700; color: #1d4ed8; background: #eff6ff; border-radius: 3px; padding: 0 2px; }
+  .ex cite { display: block; margin-top: 6px; font-size: 12.5px; color: #6b7280; font-style: normal; }
+  .ex cite .ttl { color: #374151; font-weight: 600; }
+  .ex cite .tag {
+    display: inline-block; margin-left: 6px; font-size: 10.5px; color: #6b7280;
+    background: #f3f4f6; border-radius: 4px; padding: 1px 6px;
+  }
+  .pager { display: flex; align-items: center; gap: 10px; margin-top: 12px; padding-top: 12px; border-top: 1px solid #f3f4f6; }
+  .pager button {
+    font-size: 12.5px; padding: 5px 14px; border: 1px solid #d1d5db; border-radius: 7px;
+    background: #fff; color: inherit; cursor: pointer; font-family: inherit;
+  }
+  .pager button:hover:not(:disabled) { border-color: #93c5fd; color: #1d4ed8; }
+  .pager button:disabled { opacity: .4; cursor: default; }
+  .pager span { font-size: 12px; color: #9ca3af; margin-left: auto; }
+
+  .note { font-size: 11.5px; color: #9ca3af; line-height: 1.6; margin-top: 10px; }
+
+  @media (max-width: 900px) {
+    body { padding: 10px 10px 44px; }
+    .grid { grid-template-columns: minmax(0, 1fr); }
+    .head-word { font-size: 25px; }
+    .ex-count { margin-left: 0; }
+  }
+</style>
+</head>
+<body>
+
+<header class="bar">
+  <h1>🔬 词汇实验室</h1>
+  <div class="search">
+    <input id="q" type="search" placeholder="输入英文单词，回车查询，例如 engage" autocomplete="off" autocapitalize="off" spellcheck="false">
+    <button id="go">查询</button>
+  </div>
+  <span class="hint">数据来自 vocabulary.com</span>
+</header>
+
+<div class="recent" id="recent"></div>
+<div class="grid" id="grid">
+  <div class="empty">输入一个单词开始 · 音标 / 发音 / 义项 / 同义词 / 例句（可按来源筛选）</div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+  var grid = document.getElementById('grid');
+  var recentEl = document.getElementById('recent');
+  var input = document.getElementById('q');
+  var goBtn = document.getElementById('go');
+
+  var RECENT_KEY = 'vocab.recent';
+  var state = { word: '', domain: '', offset: 0, limit: 8, entry: null, ex: null, domains: null, rightCol: null, busy: false };
+
+  var esc = function (s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  };
+
+  function el(tag, cls, text) {
+    var n = document.createElement(tag);
+    if (cls) n.className = cls;
+    if (text != null) n.textContent = text;
+    return n;
+  }
+
+  /* ---------- 最近查询 ---------- */
+  function getRecent() {
+    try { var a = JSON.parse(localStorage.getItem(RECENT_KEY) || '[]'); return Array.isArray(a) ? a : []; }
+    catch (e) { return []; }
+  }
+  function pushRecent(w) {
+    var a = getRecent().filter(function (x) { return x !== w; });
+    a.unshift(w);
+    try { localStorage.setItem(RECENT_KEY, JSON.stringify(a.slice(0, 14))); } catch (e) {}
+    renderRecent();
+  }
+  function renderRecent() {
+    var a = getRecent();
+    recentEl.innerHTML = '';
+    if (!a.length) return;
+    recentEl.appendChild(el('b', null, '最近：'));
+    a.forEach(function (w) {
+      var b = el('button', 'chip', w);
+      b.type = 'button';
+      b.onclick = function () { input.value = w; lookup(w); };
+      recentEl.appendChild(b);
+    });
+  }
+
+  /* ---------- 发音 ---------- */
+  var audioEl = null;
+  function play(word, lang, btn) {
+    if (!audioEl) audioEl = new Audio();
+    audioEl.pause();
+    // 走本站代理：境外音频站在国内直连不稳，代理后还能吃到 30 天缓存
+    audioEl.src = '/api/vocab/audio/' + encodeURIComponent(word) + '?lang=' + lang;
+    if (btn) { btn.disabled = true; setTimeout(function () { btn.disabled = false; }, 1200); }
+    audioEl.play().catch(function () {});
+  }
+
+  /* ---------- 渲染：词条 ---------- */
+  function headCard(e) {
+    var c = el('div', 'card');
+    c.appendChild(el('div', 'head-word', e.word));
+
+    var pron = el('div', 'pron');
+    [['us', 'US'], ['uk', 'UK']].forEach(function (pair) {
+      var lang = pair[0];
+      var item = el('div', 'pron-item');
+      item.appendChild(el('span', 'pron-flag', pair[1]));
+      item.appendChild(el('span', null, e.ipa[lang] || '—'));
+      var b = el('button', 'pron-play', '▶');
+      b.type = 'button';
+      b.title = '播放' + pair[1] + '发音';
+      if (!e.audio[lang]) b.disabled = true;
+      b.onclick = function () { play(e.word, lang, b); };
+      item.appendChild(b);
+      pron.appendChild(item);
+    });
+    c.appendChild(pron);
+
+    if (e.forms) {
+      var f = el('div', 'forms');
+      f.innerHTML = '<b>Other forms:</b> ' + esc(e.forms);
+      c.appendChild(f);
+    }
+    return c;
+  }
+
+  function meaningCard(e) {
+    var c = el('div', 'card');
+    c.appendChild(el('h3', null, '释义'));
+    if (e.short) c.appendChild(el('p', 'lead', e.short));
+    if (e.long) {
+      var p = el('p', 'longtxt', e.long);
+      p.hidden = true;
+      c.appendChild(p);
+      var t = el('button', 'toggle', '展开完整释义 ▾');
+      t.type = 'button';
+      t.onclick = function () {
+        p.hidden = !p.hidden;
+        t.textContent = p.hidden ? '展开完整释义 ▾' : '收起 ▴';
+      };
+      c.appendChild(t);
+    }
+    if (!e.short && !e.long) c.appendChild(el('p', 'lead', '（该词条没有简明释义）'));
+    return c;
+  }
+
+  function senseCard(e) {
+    var c = el('div', 'card');
+    c.appendChild(el('h3', null, '义项 · ' + e.senses.length + ' 条'));
+    if (!e.senses.length) {
+      c.appendChild(el('p', 'lead', '（没解析到义项）'));
+      return c;
+    }
+    e.senses.forEach(function (s, i) {
+      var box = el('div', 'sense');
+      var top = el('div', 'sense-top');
+      top.appendChild(el('span', 'sense-no', String(i + 1) + '.'));
+      var def = el('div', 'sense-def');
+      if (s.pos) def.appendChild(el('span', 'pos', s.pos));
+      def.appendChild(document.createTextNode(s.def));
+      top.appendChild(def);
+      box.appendChild(top);
+
+      if (s.synonyms && s.synonyms.length) {
+        var syn = el('div', 'syn');
+        syn.appendChild(el('i', null, 'synonyms:'));
+        s.synonyms.forEach(function (w) {
+          var a = el('a', null, w);
+          a.href = 'https://www.vocabulary.com/dictionary/' + encodeURIComponent(w);
+          a.target = '_blank';
+          a.rel = 'noopener';
+          syn.appendChild(a);
+        });
+        box.appendChild(syn);
+      }
+      if (s.example) box.appendChild(el('div', 'sense-ex', s.example));
+      c.appendChild(box);
+    });
+    return c;
+  }
+
+  /* ---------- 渲染：例句 ---------- */
+  function highlight(text, offsets) {
+    // 用接口给的 offsets 给目标词加粗；offsets 是 [start, end, start, end, ...]
+    var frag = document.createDocumentFragment();
+    var p = 0;
+    if (Array.isArray(offsets) && offsets.length) {
+      for (var i = 0; i < offsets.length; i += 2) {
+        var a = offsets[i], b = offsets[i + 1];
+        if (a > p) frag.appendChild(document.createTextNode(text.slice(p, a)));
+        var st = document.createElement('strong');
+        st.textContent = text.slice(a, b);
+        frag.appendChild(st);
+        p = b;
+      }
+    }
+    frag.appendChild(document.createTextNode(text.slice(p)));
+    return frag;
+  }
+
+  function examplesCard() {
+    var c = el('div', 'card');
+    var d = state.ex || { sentences: [], totalHits: null, domain: '' };
+
+    var head = el('div', 'ex-head');
+    head.appendChild(el('h3', null, 'Examples from books and articles'));
+    var sel = document.createElement('select');
+    (state.domains || []).forEach(function (o) {
+      var op = document.createElement('option');
+      op.value = o.code;
+      op.textContent = o.label;
+      if (o.code === d.domain) op.selected = true;
+      sel.appendChild(op);
+    });
+    sel.onchange = function () {
+      state.domain = sel.value;
+      state.offset = 0;
+      loadExamples();
+    };
+    head.appendChild(sel);
+    head.appendChild(el('span', 'ex-count', d.totalHits != null ? d.totalHits.toLocaleString() + ' 句可筛' : ''));
+    c.appendChild(head);
+
+    if (!d.sentences.length) {
+      c.appendChild(el('p', 'lead', '这个来源下没有例句。'));
+      return c;
+    }
+
+    d.sentences.forEach(function (s) {
+      var box = el('div', 'ex');
+      var p = el('p');
+      p.appendChild(highlight(s.text, s.offsets));
+      box.appendChild(p);
+      var cite = el('cite');
+      if (s.title) {
+        var t = el('span', 'ttl', s.title);
+        cite.appendChild(t);
+        if (s.author) cite.appendChild(document.createTextNode(' by ' + s.author));
+      } else {
+        cite.appendChild(document.createTextNode(s.corpus || '语料库'));
+      }
+      if (s.domains && s.domains.length) cite.appendChild(el('span', 'tag', domainLabel(s.domains[0])));
+      box.appendChild(cite);
+      c.appendChild(box);
+    });
+
+    var pager = el('div', 'pager');
+    var prev = el('button', null, '‹ 上一页');
+    var next = el('button', null, '下一页 ›');
+    prev.type = next.type = 'button';
+    prev.disabled = state.offset <= 0;
+    next.disabled = d.totalHits != null && state.offset + state.limit >= d.totalHits;
+    prev.onclick = function () { state.offset = Math.max(0, state.offset - state.limit); loadExamples(); };
+    next.onclick = function () { state.offset += state.limit; loadExamples(); };
+    pager.appendChild(prev);
+    pager.appendChild(next);
+    var from = d.totalHits ? state.offset + 1 : 0;
+    pager.appendChild(el('span', null, from + '–' + (state.offset + d.sentences.length) + ' / ' + (d.totalHits || '?')));
+    c.appendChild(pager);
+
+    var note = el('div', 'note');
+    note.innerHTML =
+      '例句来自 vocabulary.com 语料库（书籍与文章摘录），用于说明该词的<b>实际用法</b>。' +
+      '「All sources」是书籍文章精选样本；选具体来源（Literature / News / Business…）则检索全量语料，句数会多得多。' +
+      ' <a href="' + esc(state.entry ? state.entry.url : 'https://www.vocabulary.com/') + '" target="_blank" rel="noopener">在 vocabulary.com 打开词条 ↗</a>';
+    c.appendChild(note);
+    return c;
+  }
+
+  var DOMAIN_LABEL = { F: 'Literature', A: 'Arts', N: 'News', B: 'Business', S: 'Sports', M: 'Science', T: 'Technology' };
+  function domainLabel(code) { return DOMAIN_LABEL[code] || code; }
+
+  /**
+   * 清空并丢弃对右列的引用。
+   * 必须一起丢：右列节点一旦被 innerHTML 清掉就是脱离 DOM 的孤儿，
+   * 而 renderExamples() 只认 state.rightCol —— 留着旧引用就会把新内容写进孤儿节点，
+   * 屏幕上永远停在上一次的提示（踩过：「查不到的词」之后再查什么都卡在"正在抓取…"）。
+   */
+  function clearGrid() {
+    grid.innerHTML = '';
+    state.rightCol = null;
+  }
+
+  /* ---------- 渲染总入口 ---------- */
+  function render() {
+    clearGrid();
+    if (!state.entry) {
+      grid.appendChild(el('div', 'empty', '没查到这个词。检查拼写，或者它可能没有被收录。'));
+      return;
+    }
+    var left = el('div', 'col');
+    left.appendChild(headCard(state.entry));
+    left.appendChild(meaningCard(state.entry));
+    left.appendChild(senseCard(state.entry));
+    var right = el('div', 'col');
+    right.appendChild(examplesCard());
+    grid.appendChild(left);
+    grid.appendChild(right);
+    state.rightCol = right;
+  }
+
+  /**
+   * 只重画例句那一列。
+   * 换来源/翻页时如果整页重渲染，左边的义项会被重建，屏幕会闪一下、滚动位置也容易跳
+   * （义项多的词能滚出好几屏，用户正看到第 8 条，一翻页被打回原处最烦人）。
+   */
+  function renderExamples() {
+    if (!state.rightCol) return render();
+    state.rightCol.innerHTML = '';
+    var card = examplesCard();
+    state.rightCol.appendChild(card);
+    // 翻页按钮在列表底部，点完ifram已经滚过去了 → 把新列表的顶部带回视野
+    if (card.getBoundingClientRect().top < 0) card.scrollIntoView({ block: 'start' });
+  }
+
+  function renderLoading(txt) {
+    clearGrid();
+    grid.appendChild(el('div', 'empty', txt));
+  }
+
+  /* ---------- 取数 ---------- */
+  function setBusy(b) {
+    state.busy = b;
+    goBtn.disabled = b;
+  }
+
+  async function lookup(word) {
+    word = String(word || '').trim().toLowerCase();
+    if (!word) return;
+    if (state.busy) return;
+    state.word = word;
+    state.offset = 0;
+    setBusy(true);
+    renderLoading('正在抓取 “' + word + '” …');
+    if (!state.domains) await loadMeta(); // 下拉项要在第一次渲染例句前就位
+
+    try {
+      var r = await fetch('/api/vocab/word/' + encodeURIComponent(word), { cache: 'no-store' });
+      var j = await r.json();
+      if (!r.ok) throw new Error(j.error || ('HTTP ' + r.status));
+      state.entry = j;
+      pushRecent(word);
+      await loadExamples();
+    } catch (e) {
+      state.entry = null;
+      state.ex = null;
+      clearGrid();
+      grid.appendChild(el('div', 'empty', '查询失败：' + (e.message || e) + '（再试一次，或换个词）'));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function loadExamples() {
+    if (!state.word) return;
+    try {
+      var url = '/api/vocab/examples?q=' + encodeURIComponent(state.word) +
+        '&offset=' + state.offset + '&limit=' + state.limit +
+        (state.domain ? '&domain=' + encodeURIComponent(state.domain) : '');
+      var r = await fetch(url, { cache: 'no-store' });
+      var j = await r.json();
+      if (!r.ok) throw new Error(j.error || ('HTTP ' + r.status));
+      state.ex = j;
+    } catch (e) {
+      state.ex = { sentences: [], totalHits: null, domain: state.domain, err: e.message };
+    }
+    renderExamples();
+  }
+
+  async function loadMeta() {
+    try {
+      var r = await fetch('/api/vocab/meta', { cache: 'no-store' });
+      var j = await r.json();
+      state.domains = j.domains || [];
+    } catch (e) {
+      state.domains = [{ code: '', label: 'All sources' }];
+    }
+  }
+
+  /* ---------- 入口 ---------- */
+  goBtn.onclick = function () { lookup(input.value); };
+  input.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') { e.preventDefault(); lookup(input.value); }
+  });
+
+  renderRecent();
+  loadMeta().then(function () {
+    var last = getRecent()[0];
+    if (last) { input.value = last; lookup(last); }
+  });
+})();
+</script>
+</body>
+</html>

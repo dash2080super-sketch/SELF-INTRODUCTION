@@ -21,6 +21,7 @@ import { swingRouter } from './src/swing-api.js';
 import { initSwingTables } from './src/swing-tables.js';
 import { etfRouter } from './src/etf-api.js';
 import clipimgRouter from './src/clipimg-api.js';
+import vocabRouter from './src/vocab-api.js';
 
 // A股择时看板：一个完全独立的静态页（自带样式与 ECharts），
 // 由 modules/timing.js 这个 virtual 模块用 iframe 嵌进来。
@@ -73,6 +74,8 @@ app.use('/api/swing', swingRouter);
 // ETF/场内标的看板：抓东财（行情/K线/资金流/净值/概况），页面在 /etf/index.html
 app.use('/api/etf', etfRouter);
 app.use('/api/clipimg', clipimgRouter);
+// 词汇实验室：服务端抓 vocabulary.com 词条与语料库例句（浏览器直连被 CORS 挡），页面在 /vocab/index.html
+app.use('/api/vocab', vocabRouter);
 
 app.use('/api/m/:moduleId', (req, res, next) => {
   const mod = findModule(modules, req.params.moduleId);

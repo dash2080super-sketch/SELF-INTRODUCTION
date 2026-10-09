@@ -1433,3 +1433,88 @@ API 侧把 POST / DELETE 的落盘包进 try/catch 返回 JSON（以前是 expre
 2. `stat -c "%U:%G %a" /opt/billboard/data/clipimg` —— 必须是 `billboard:billboard`
 3. `python3` 比对 `index.json` 与目录里的文件名是否一一对应
 4. 前端"粘了没反应"先看焦点：粘贴事件归属于有焦点的那个 document，何况还隔着 iframe
+
+---
+
+## 2026-10-10 新增「词汇实验室」tab（scrape Vocabulary.com）
+
+### 落位文件表
+
+| 文件 | 作用 | 是否新增 |
+|---|---|---|
+| `/opt/billboard/src/vocab-api.js` | 后端：抓词典页 + corpus 例句 API + 音频代理，挂载在 `/api/vocab` | 新增 |
+| `/opt/billboard/modules/vocab.js` | 模块定义（`id:'vocab'`，`virtual:true`，`order:31`） | 新增 |
+| `/opt/billboard/public/js/modules/vocab.js` | 前端渲染器：iframe 指向 `/vocab/index.html` | 新增 |
+| `/opt/billboard/public/vocab/index.html` | 自包含页面：搜索 / 发音 / 释义 / 义项 / 例句（带来源筛选） | 新增 |
+| `/opt/billboard/scripts/vocab-parse-test.mjs` | 解析器回归测试（离线 + 在线） | 新增 |
+| `/opt/billboard/server.js` | 加两行：`import vocabRouter` + `app.use('/api/vocab', vocabRouter)` | 改 |
+
+`order:31` 是刻意选的：Word List 是 30，紧挨着放，单词相关功能聚在一起；同时不会像大 order 那样在移动端被挤出首屏。
+`virtual:true` —— 这个 tab 不建表、不做 CRUD，纯读取 + 展示。
+
+### 为什么必须有后端代理（不能前端直连）
+
+浏览器直连 vocabulary.com 会被 CORS 挡死，本地实测 `fetch()` 直接失败。所以三条数据全走服务端：
+
+- 词典页：`https://www.vocabulary.com/dictionary/<word>` —— 服务端渲染的 HTML，正则解析。
+- 例句：`https://corpus.vocabulary.com/api/1.0/examples?query=&maxResults=&startOffset=&domain=` —— 返回 JSON。
+- 音频：`https://audio.vocabulary.com/1.0/{us|uk}/<TOKEN>.mp3` —— 按字节代理，缓存 1 天。
+
+音频代理做了 host 白名单（只允许 `audio.vocabulary.com` 和 `sd-pronunciation-processed-videos.sdcdns.com`），**不要**把 `/api/vocab/audio/:word` 改成任意 URL 代理，否则本站就变成一个开放代理了。
+
+缓存：词条 6 小时、例句 1 小时，最多 300 条（`ENTRY_TTL` / `EX_TTL` / `CACHE_MAX` in `src/vocab-api.js`）。
+
+### 两个坑（改解析器前必读）
+
+**坑 1：页面里有两份 IPA 块。** 直接用全局正则抓 `ipa-section` 或音频 token 会抓到错误的那一份（实测会拿到空串或错误音标）。必须把解析窗口限定在 `.ipa-section` … `<a class="ipa-guide"` 之间。
+
+**坑 2：带不带 domain，例句池完全不是一回事。**
+- 不带 `domain`：Vocabulary.com 的**精选**语料（"books and articles"），数量小但质量高 —— `engage` 实测 191 条。
+- 带 `domain=X`：全量语料库检索，数量大得多 —— `engage` 在 News(N) 下有 6,984 条，F 下 5,600 条。
+
+所以前端的"全部来源"和"新闻"**不是同一个池子的一小部分**，是两个不同的池子，切换时条数会跳变，这是正确行为而不是 bug。
+另外分页必须固定走 `/api/1.0/examples`，不要换成 `/examples/random.json`（后者每次返回随机结果，翻页会错乱）。
+
+**坑 3（前端）：** 例句区重绘只重建右列（`state.rightCol`），切来源 / 翻页时左列不动、滚动位置不丢。如果哪天改成整块重绘，先调用 `clearGrid()` 把 `state.rightCol` 置空 —— 否则查询失败后下一次成功查询会渲染到一个已经从 DOM 里摘掉的游离节点上，界面永久卡在"正在抓取…"（这个 bug 真实发生过，`serendipity` 复现）。
+
+### 验证记录（2026-10-10，真实浏览器 + 线上）
+
+| 项 | 结果 |
+|---|---|
+| `/api/modules` | 18 个模块，顺序 `…words → vocab → sentences…`，meta `{id:'vocab', name:'词汇实验室', icon:'🔬', virtual:true}` |
+| 全站路由回归（已登录） | 全部 200：`/index.html` `/api/health` `/api/modules` `/api/finance` `/api/drawdown` `/api/n225` `/api/ndxspx` `/api/etf/snapshot` `/api/clipimg` `/api/vocab/meta` `/jde-macro/` `/etf/` `/clipimg/` `/vocab/` `/timing/` `/life/` |
+| 鉴权 | 未登录访问 `/vocab/index.html` → 302；`/api/vocab/*` → 401 |
+| `engage` 渲染 | 词头 `engage`；`US /ɪnˈgeɪdʒ/` + `UK /ɛnˈgeɪdʒ/` 各带 ▶；Other forms `engaged; engaging; engages`；10 个义项带同义词；8 条例句且目标词加粗 |
+| 来源筛选 | 全部来源 → `1–8 / 191`；切 News → `6,984 句可筛`、`1–8 / 6984`；翻页 → `9–16 / 6984` |
+| 切来源时左列保留 | `kept = true`（释义区不重建） |
+| 音频代理 | 200 `audio/mpeg` |
+| 生造词 | 提示「查询失败：没有查到这个词」，且下一次正常查询可恢复 |
+| 移动端 390×844 | 无横向溢出（`scrollWidth 366 == clientWidth 366`），单列 `346px`，iframe 底部 774 ≤ 844 |
+| 解析器回归 | `node scripts/vocab-parse-test.mjs` → `parser regression OK`（覆盖 engage / ephemeral / ubiquitous / serendipity / run） |
+| 服务日志 | `[billboard] 已加载模块: todos, thoughts, words, vocab, sentences, …` |
+
+### 回滚方法
+
+纯静态页 + 一个小后端，无数据库、无迁移，回滚很干净：
+
+```bash
+cd /opt/billboard
+rm -f src/vocab-api.js modules/vocab.js public/js/modules/vocab.js scripts/vocab-parse-test.mjs
+rm -rf public/vocab
+cp server.js.bak-vocab-20261010-065500 server.js   # 或手工删掉那两行 vocab 挂载
+systemctl restart billboard
+```
+
+备份：`server.js.bak-vocab-20261010-065500`（挂载前）。前端 `public/js/modules/*.js` 的备份惯例是 `.bak-<tag>-<时间戳>`。
+
+### 后续怎么更新内容
+
+- **加来源**：改 `src/vocab-api.js` 的 `DOMAINS` 数组，`/api/vocab/meta` 会把新项吐给前端，前端 `<select>` 是动态渲染的，不用改 `public/vocab/index.html`。
+- **改页面样式 / 布局**：只动 `public/vocab/index.html`（自包含，CSS/JS 内联）。改完浏览器硬刷新即可，`__ASSET_V__` 会自动带上版本号。
+  - 提醒：占位符 `__ASSET_V__` **只能**出现在值的位置（`?v=__ASSET_V__`），绝对不能当变量名用 —— 服务端是 `html.replaceAll()`，当变量名写会把代码替换坏。
+- **解析器改了必须跑测试**：`cd /opt/billboard && node scripts/vocab-parse-test.mjs`（要在 `/opt/billboard` 下跑，`node_modules` 在那儿；在 `/tmp` 跑会 `ERR_MODULE_NOT_FOUND: express`）。
+- **上游改版**：Vocabulary.com 是第三方站点，改版会让解析失败，表现为所有词都查不到或音标为空。先跑上面的测试脚本定位是哪个字段坏了，再看 `src/vocab-api.js` 里 `parseEntry()` 对应的正则。
+
+### 已知不修
+
+无。义项的同义词、例句都来自上游，本站不落库，上游质量即本站质量。

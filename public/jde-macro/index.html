@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>日/德/法宏观 · 恐慌指数与情绪指标全景手册 — 2026-09-26</title>
+<script src="vendor/echarts.min.js"></script>
+<style>
+  :root{
+    --bg:#f7f8fa; --card:#ffffff; --ink:#1a1d21; --ink2:#4a5158; --ink3:#7b838c;
+    --line:#e3e6ea; --line2:#eef0f3;
+    --jp:#c0392b; --de:#2c6ecb; --fr:#8e44ad; --eu:#16a085; --us:#95a5a6;
+    --warn:#b8860b; --warnbg:#fdf6e3; --risk:#c0392b; --riskbg:#fdf0ee;
+    --ok:#1e8449; --okbg:#eef8f2; --infobg:#eef4fb; --info:#1f5c9e;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; padding:0; background:var(--bg); color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+    font-size:15px; line-height:1.75; -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:1180px; margin:0 auto; padding:32px 28px 80px;}
+  header.top{border-bottom:3px solid var(--ink); padding-bottom:18px; margin-bottom:26px;}
+  .kicker{font-size:12px; letter-spacing:.18em; color:var(--ink3); text-transform:uppercase; font-weight:600;}
+  h1{font-size:29px; line-height:1.35; margin:10px 0 8px; letter-spacing:-.01em;}
+  .sub{color:var(--ink2); font-size:14px;}
+  .meta{font-size:12.5px; color:var(--ink3); margin-top:10px;}
+
+  h2{
+    font-size:21px; margin:44px 0 16px; padding-left:12px;
+    border-left:4px solid var(--ink); line-height:1.3;
+  }
+  h3{font-size:16.5px; margin:26px 0 10px; color:var(--ink);}
+  h4{font-size:14.5px; margin:18px 0 8px; color:var(--ink2);}
+  p{margin:10px 0;}
+  a{color:var(--info); text-decoration:none; border-bottom:1px solid rgba(31,92,158,.3);}
+  a:hover{border-bottom-color:var(--info);}
+
+  .card{background:var(--card); border:1px solid var(--line); border-radius:8px; padding:20px 22px; margin:16px 0;}
+  .tldr{background:var(--card); border:1px solid var(--line); border-top:4px solid var(--jp); border-radius:8px; padding:22px 24px; margin:18px 0 8px;}
+  .tldr ol{margin:8px 0 0; padding-left:22px;}
+  .tldr li{margin:9px 0;}
+
+  .grid4{display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin:18px 0;}
+  .grid3{display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin:18px 0;}
+  .grid2{display:grid; grid-template-columns:repeat(2,1fr); gap:14px; margin:18px 0;}
+  @media(max-width:860px){.grid4,.grid3,.grid2{grid-template-columns:1fr;}}
+
+  .stat{background:var(--card); border:1px solid var(--line); border-radius:8px; padding:14px 16px;}
+  .stat .lab{font-size:12px; color:var(--ink3); font-weight:600; letter-spacing:.04em;}
+  .stat .val{font-size:27px; font-weight:700; font-variant-numeric:tabular-nums; margin:4px 0 2px;}
+  .stat .note{font-size:11.5px; color:var(--ink3);}
+  .up{color:var(--jp);} .down{color:var(--ok);}
+
+  table{width:100%; border-collapse:collapse; margin:14px 0; font-size:13.5px; background:var(--card);}
+  th,td{border:1px solid var(--line); padding:9px 11px; text-align:left; vertical-align:top;}
+  th{background:#f0f2f5; font-weight:700; font-size:12.5px; color:var(--ink2); letter-spacing:.02em;}
+  td.num{font-variant-numeric:tabular-nums; white-space:nowrap;}
+  tr:nth-child(even) td{background:#fbfcfd;}
+  .src{font-size:11.5px; color:var(--ink3); margin-top:-8px; margin-bottom:18px;}
+
+  .tag{display:inline-block; padding:1px 7px; border-radius:4px; font-size:11px; font-weight:700; letter-spacing:.03em; vertical-align:middle;}
+  .t-jp{background:#fdecea; color:var(--jp);}
+  .t-de{background:#eaf1fb; color:var(--de);}
+  .t-fr{background:#f5eef9; color:var(--fr);}
+  .t-eu{background:#e8f6f3; color:var(--eu);}
+  .t-us{background:#f0f2f4; color:#5c6a75;}
+  .t-ok{background:var(--okbg); color:var(--ok);}
+  .t-warn{background:var(--warnbg); color:var(--warn);}
+  .t-risk{background:var(--riskbg); color:var(--risk);}
+
+  .callout{border-left:4px solid var(--warn); background:var(--warnbg); padding:13px 16px; margin:16px 0; border-radius:0 6px 6px 0; font-size:14px;}
+  .callout.risk{border-left-color:var(--risk); background:var(--riskbg);}
+  .callout.info{border-left-color:var(--info); background:var(--infobg);}
+  .callout b{display:block; margin-bottom:4px;}
+
+  .mapbox{border:1px solid var(--line); border-radius:8px; padding:14px 16px; background:var(--card);}
+  .mapbox .mhead{font-weight:700; font-size:14px; margin-bottom:8px; padding-bottom:8px; border-bottom:1px solid var(--line2);}
+  .layer{margin:9px 0; padding:8px 10px; border-radius:6px; background:#fafbfc; border:1px solid var(--line2);}
+  .layer .lname{font-size:12px; font-weight:700; color:var(--ink2); letter-spacing:.03em;}
+  .layer .lbody{font-size:13px; margin-top:4px; color:var(--ink);}
+  .miss{color:var(--ink3); font-style:italic;}
+
+  code{background:#f0f2f5; padding:1px 5px; border-radius:3px; font-size:12.5px; font-family:ui-monospace,SFMono-Regular,Menlo,monospace;}
+  .chartbox{background:var(--card); border:1px solid var(--line); border-radius:8px; padding:18px; margin:16px 0;}
+  .toggle{display:inline-flex; border:1px solid var(--line); border-radius:6px; overflow:hidden; margin-bottom:10px;}
+  .toggle button{border:0; background:var(--card); padding:6px 14px; font-size:12.5px; cursor:pointer; color:var(--ink2); font-family:inherit;}
+  .toggle button.on{background:var(--ink); color:#fff;}
+  ul.tight{margin:8px 0; padding-left:20px;} ul.tight li{margin:5px 0;}
+  .disc{background:#f4f5f7; border:1px dashed var(--line); border-radius:6px; padding:14px 16px; font-size:13px; color:var(--ink2); margin-top:36px;}
+  .small{font-size:12.5px; color:var(--ink3);}
+  .barscale{display:flex; font-size:11px; text-align:center; border-radius:5px; overflow:hidden; margin:8px 0 4px;}
+  .barscale div{flex:1; padding:4px 2px; color:#fff; font-weight:600;}
+
+  /* ================= 移动端适配（2026-09-26 补） =================
+     问题：390px 视口下本页横向溢出到 813px（可视只有 390）。
+     根因是 12 张表里最宽的 785px —— td 内长句与长 URL 把列撑开，
+     而 table 没有滚动容器，直接把 .wrap 顶宽。
+     图表同理：左侧 130px 的标签留白在 390px 屏上吃掉三分之一绘图区。 */
+
+  /* 表格一律放进可横向滚动的容器；间距交给容器，表格自身不再设 margin */
+  .tw{overflow-x:auto; -webkit-overflow-scrolling:touch; margin:14px 0;}
+  .tw>table{margin:0;}
+  /* 长 URL / 代码串必须能断开，否则单行就撑破容器 */
+  code{word-break:break-all;}
+  a{word-break:break-word;}
+
+  @media(max-width:720px){
+    .wrap{padding:18px 14px 56px;}
+    body{font-size:14.5px;}
+    h1{font-size:22px;}
+    h2{font-size:18px; margin:32px 0 12px;}
+    h3{font-size:16px;}
+    h4{font-size:14px;}
+    table{font-size:12.5px;}
+    th,td{padding:7px 8px;}
+    th{font-size:11.5px;}
+    .card,.tldr{padding:16px 14px;}
+    .chartbox{padding:12px 10px;}
+    .stat .val{font-size:23px;}
+    /* 图表高度 400px 是内联样式，要用 !important 才盖得住 */
+    #mainChart{height:320px !important;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="top">
+  <div class="kicker">Global Sentiment &amp; Volatility Map</div>
+  <h1>日本 / 德国 / 法国有没有自己的「恐慌指数」？<br>有，但比美国少一个量级 —— 以及它们该怎么读</h1>
+  <div class="sub">一份可直接当查询手册用的指标地图：每个指标是誰发的、在哪看、多少算高、哪些第三方数据在骗你。</div>
+  <div class="meta">编制时间：2026-09-26（周六，欧日澳美主要交易所休市）· 所有行情为 2026-09-25 最近一次收盘 · 数据经跨源核对，冲突处已显式标注</div>
+</header>
+
+<div class="tldr">
+  <div class="kicker" style="color:#c0392b">TL;DR — 先给结论</div>
+  <ol>
+    <li><b>有，但是"单点"不是"家族"。</b>美国 CBOE 的波动率家族至少有 10 个成员（VIX / VXN / VXD / RVX / VXO / VXST / VXV / VXMT / VIN / VIF），另有 VVIX、SKEW 等高阶指标；<b>日本只有 1 个官方波动率指数（日経平均VI），德国 1 个（VDAX），法国 1 个（VCAC）</b>，加上一个泛欧的 VSTOXX。缺的主要是「按板块/规模切的波动率」和「波动率的波动率」。</li>
+    <li><b>唯一例外：欧洲的期限结构比美国还全。</b>VSTOXX 和 VDAX 各有 <b>12 个固定期限主指数（30–360 天）+ 8 个子指数（1M–24M）</b>，这层比 CBOE 更完整 —— 所以「期限结构」这一维度不要低估欧洲。</li>
+    <li><b>没有官方版 CNN Fear &amp; Greed。</b>美国那套七因子复合指标是 CNN 独有的产品，日德法都没有官方对标物；网上能找到的"欧洲/日本 Fear &amp; Greed"基本是第三方仿制或加密版。<b>真正可替代的是德国 Sentix 和德国证交所的情绪调查</b>，而不是复合指标。</li>
+    <li><b>最关键的一条：不能拿 VIX 的阈值套日经。</b>同一天（2026-09-14）VIX 17.10 而日経平均VI 31.06，几乎两倍。<b>日本用"&gt;30"，德国/欧洲用"&gt;25–28"，美国才是"&gt;20"</b>。</li>
+    <li><b>两个必须从数据源剔掉的坑：</b>① Markets Insider 的 VCAC 页面至今挂着 <b>2020-12-31</b> 的旧快照；② boerse-frankfurt.de 已重定向，且 <b>VDAX-NEW 在 2024-09 正式更名为 VDAX</b>，1994–2016 年的旧 VDAX（45 天、Black-Scholes）口径完全不同，历史序列不能直接接。</li>
+  </ol>
+</div>
+
+<h2>一、四国「恐慌温度计」当前读数</h2>
+<p>先把四个市场放在同一张秤上。下面是 2026-09-25 各自收盘的 30 天隐含波动率 —— 注意它们<b>读数不可横向直接比</b>，原因见下面第二节。</p>
+
+<div class="grid4">
+  <div class="stat">
+    <div class="lab"><span class="tag t-us">美国</span> VIX</div>
+    <div class="val">14.87</div>
+    <div class="note">−5.11% · 2026-09-25 收盘<br>来源：KlickAnalytics（非一手）</div>
+  </div>
+  <div class="stat">
+    <div class="lab"><span class="tag t-eu">泛欧</span> VSTOXX (V2TX)</div>
+    <div class="val">17.25</div>
+    <div class="note">−1.27% · 2026-09-25 17:30 CET<br>来源：STOXX 官网（一手）</div>
+  </div>
+  <div class="stat">
+    <div class="lab"><span class="tag t-de">德国</span> VDAX (V1X)</div>
+    <div class="val">≈19.9</div>
+    <div class="note">+4.43% · 2026-09-25 17:30 CET<br>来源：STOXX 官网（一手，见下方冲突说明）</div>
+  </div>
+  <div class="stat">
+    <div class="lab"><span class="tag t-jp">日本</span> 日経平均VI</div>
+    <div class="val">20.30</div>
+    <div class="note">−27.78% · 2026-09-25 15:50 JST<br>来源：Nikkei Indexes 官网（一手）</div>
+  </div>
+</div>
+
+<div class="callout risk">
+  <b>数据冲突必须点名：VDAX 当前值在同一批抓取里出现了三个数</b>
+  <code>stoxx.com/index/v1x/</code> 显示 <b>19.93</b>（17:30 CET 收盘），<code>stoxx.com/index-details?symbol=V1X</code> 显示 <b>19.05</b>（10:32 CET），<code>dax-indices.com</code> 同一页显示 <b>18.35</b>。这是不同日期的页面缓存叠加（抓取日为周六，无新收盘值），不是数据错误。<br>
+  <b>处理：本报告一律采用 STOXX 官网上标注 17:30 CET 收盘的那个读数并注明抓取时点。</b>VDAX 的实时值请直接去 stoxx.com 看，不要采信任何二手站。<br>
+  <span class="small">口径提示：德意志交易所官网 <code>boerse-frankfurt.de</code> 已重定向到 <code>live.deutsche-boerse.com</code>，且该页为 JS 渲染、抓不到纯文本数值。</span>
+</div>
+
+<div class="chartbox">
+  <div class="toggle">
+    <button id="btnChart" class="on" onclick="switchView('chart')">图</button>
+    <button id="btnTable" onclick="switchView('table')">精确数值</button>
+  </div>
+  <div id="viewChart"><div id="mainChart" style="width:100%;height:400px;"></div></div>
+  <div id="viewTable" style="display:none;">
+    <div class="tw"><table>
+      <thead><tr><th>指数</th><th>标的</th><th>当前值</th><th>52周低</th><th>52周高</th><th>当前在区间的位置</th></tr></thead>
+      <tbody>
+        <tr><td>日経平均VI</td><td>Nikkei 225</td><td class="num">20.30</td><td class="num">—</td><td class="num">—</td><td>—</td></tr>
+        <tr><td>VDAX (V1X)</td><td>DAX</td><td class="num">19.93</td><td class="num">13.62</td><td class="num">33.67</td><td class="num">31%</td></tr>
+        <tr><td>VSTOXX (V2TX)</td><td>EURO STOXX 50</td><td class="num">17.25</td><td class="num">14.05</td><td class="num">34.78</td><td class="num">15%</td></tr>
+        <tr><td>VIX</td><td>S&amp;P 500</td><td class="num">14.87</td><td class="num">—</td><td class="num">—</td><td>—</td></tr>
+      </tbody>
+    </table></div>
+    <div class="src">VDAX 52周低 13.6176（2025-12-23）/ 高 33.6733（2026-03-27）；VSTOXX 52周低 14.0473（2025-12-23）/ 高 34.7753（2026-03-27）。来源：STOXX 官网 stoxx.com/index/v1x/ 与 /index/v2tx/，读取时间 2026-09-26。日経平均VI 30 天 construction，当日 20.30（Open 27.22 / High 27.91 / Low 20.30，来源 indexes.nikkei.co.jp，2026-09-25 15:50 JST）。VIX 14.87 来源 KlickAnalytics 2026-09-25（非一手，需核实原文）。52 周高值集中在 2026-03-27 同一天，说明那是一个跨市场同步冲击（当日 CAC 40 −1.49%、文本记录显示当时为供应/能源侧冲击窗口）。</div>
+  </div>
+</div>
+
+<h2>二、为什么不能拿 VIX 的刻度去读日经</h2>
+<p>这是最容易犯的错误，也是本报告最有价值的一条。同一组数据（Cbonds 指数库，2026-09-14）并列一行就很清楚了：</p>
+
+<div class="tw"><table>
+  <thead><tr><th>同一天（2026-09-14）</th><th>读数</th><th>含义换算</th></tr></thead>
+  <tbody>
+    <tr><td>VIX Index</td><td class="num">17.10</td><td rowspan="2">同为 30 天年化波动率，日本比美国高出 <b>82%</b>。日本这套刻度的"中性"大约对应美国的"紧张"。</td></tr>
+    <tr><td>Nikkei Volatility Index</td><td class="num">31.06</td></tr>
+  </tbody>
+</table></div>
+<div class="src">来源：Cbonds 指数库 VIX 与 Nikkei Volatility Index 对照页，读取 2026-09-26，两值均为 2026-09-14。Cbonds 为二手数据源，数值仅用于说明<b>相对量级差异</b>，绝对精确值请回 Nikkei 官网核。</div>
+
+<p>根因有三：<b>①日経225 是价格加权而非市值加权</b>，成分集中在出口股与高价股，指数本身的方差天然更大；<b>②日元汇率是第二个波动源</b>，海外投资者承担的是"股价 × 汇率"双重波动，期权把这一层也定价进去了；<b>③BOJ 政策切换本身放大了波动</b>。这三条使得日経VI 的长期中枢系统性高于 VIX。</p>
+
+<div class="callout">
+  <b>一条实测证据</b>
+  STOXX/Nikkei 官方 factsheet 给出的波动率指数本身波动率：Nikkei 225 VI 近 5 年年化标准差 <b>87.23%</b>，而 Nikkei 225 本身只有 <b>16.83%</b>。也就是说日経VI 是一个「本身就高波动」的波动率工具，不能用盯静态指标的眼光去看它。<span class="small">来源：indexes.nikkei.co.jp 月度 factsheet（Vendor Code 页），读取 2026-09-26。</span>
+</div>
+
+<h2>三、指标地图：三个国家 × 四个层级</h2>
+<p>把三类工具分开看 —— 它们回答的不是同一个问题：<b>隐含波动率</b>回答"市场现在定价了多少风险"（高频、可交易），<b>问卷调查</b>回答"人嘴上说什么"（低频、月度/周度），<b>资金/结构数据</b>回答"钱实际怎么走的"（滞后但最诚实）。</p>
+
+<div class="grid3">
+  <div class="mapbox">
+    <div class="mhead"><span class="tag t-jp">日本</span> Japan</div>
+    <div class="layer"><div class="lname">A · 隐含波动率</div><div class="lbody"><b>日経平均VI</b>（唯一官方）<br><span class="small">30 天 · 实时 5 秒 · 2010 起算（回溯至 1989-06-12）</span></div></div>
+    <div class="layer"><div class="lname">B · 问卷调查</div><div class="lbody">野村 <b>I-View</b>（个人・DI −100~+100）<br>楽天証券 <b>楽天DI</b><br>Sentix 日本分项（Sentix 监测系统覆盖日本）<br>日証協 个人投资者意识调查（年度）</div></div>
+    <div class="layer"><div class="lname">C · 资金/结构</div><div class="lbody">JPX <b>投資部門別売買状況</b>（外国人动向，每周四）<br><b>空売り比率・空売り残高報告</b>（每日 / 每月）<br><b>信用取引残高（買残・売残・信用倍率）</b></div></div>
+    <div class="layer"><div class="lname">D · 缺失项</div><div class="lbody"><span class="miss">没有 VXN 类的板块/成长股波动率<br>没有 TOPIX 专属波动率指数<br>没有官方复合 Fear &amp; Greed</span></div></div>
+  </div>
+
+  <div class="mapbox">
+    <div class="mhead"><span class="tag t-de">德国</span> Germany</div>
+    <div class="layer"><div class="lname">A · 隐含波动率</div><div class="lbody"><b>VDAX</b>（2024-09 前叫 VDAX-NEW）<br><b>VSTOXX</b>（泛欧，含德国权重）<br><span class="small">各 12 主指数 30–360 天 + 8 子指数 1M–24M</span></div></div>
+    <div class="layer"><div class="lname">B · 问卷调查</div><div class="lbody">法兰克福证交所 <b>DAX Sentiment</b>（周度，逆向指标）<br><b>Sentix</b> 德国 / 欧元区（月度）<br><b>ifo</b> 商业景气（月度，9000 家企业）<br><b>ZEW</b> 经济景气（月度，300 位分析师）</div></div>
+    <div class="layer"><div class="lname">C · 资金/结构</div><div class="lbody">Bundesbank 周活动指数<br>iTraxx Europe / Xover（欧洲 CDS）</div></div>
+    <div class="layer"><div class="lname">D · 缺失项</div><div class="lbody"><span class="miss">没有 MDAX / TecDAX 专属波动率<br>没有官方复合 Fear &amp; Greed</span></div></div>
+  </div>
+
+  <div class="mapbox">
+    <div class="mhead"><span class="tag t-fr">法国</span> France</div>
+    <div class="layer"><div class="lname">A · 隐含波动率</div><div class="lbody"><b>VCAC</b>（2007-09 起算，30 天）<br><b>VSTOXX</b>（实务中法国大多直接用它）<br><span class="small">⚠️ VCAC 免费实时源稀少，见第五节</span></div></div>
+    <div class="layer"><div class="lname">B · 问卷调查</div><div class="lbody">INSEE <b>商业景气综合指标</b>（月度，100=长期均值）<br>INSEE <b>家庭信心指数</b>（月度）<br>Sentix 覆盖法国（经欧元区口径）</div></div>
+    <div class="layer"><div class="lname">C · 资金/结构</div><div class="lbody">欧洲 <b>iTraxx</b> 系列<br>法国国债利差（OAT–Bund）</div></div>
+    <div class="layer"><div class="lname">D · 缺失项</div><div class="lbody"><span class="miss">没有个股/板块波动率<br>没有证交所自己的情绪指标<br>没有官方复合 Fear &amp; Greed<br>—— 法国是三国里最贫瘠的一个</span></div></div>
+  </div>
+</div>
+
+<h2>四、逐个详解：算法 · 代码 · 阈值 · 去哪看</h2>
+
+<h3><span class="tag t-jp">日本</span> 日経平均ボラティリティー・インデックス（日経平均VI）</h3>
+<div class="tw"><table>
+  <thead><tr><th style="width:16%">项</th><th>内容</th></tr></thead>
+  <tbody>
+    <tr><td>发布方</td><td>日本経済新聞社（Nikkei Inc.）独家计算并保有知识产权；所用期权来自大阪取引所（OSE，属 JPX）</td></tr>
+    <tr><td>算法</td><td>用<b>日経225 期货 + 日経225 期权</b>价格。以近月期货价作为 ATM 基准，用各交割月的 <b>OTM 期权价</b>算近月与次月波动率，再<b>线性插/外推到 30 天</b>到期。Model-free 口径，与新版 VIX 同源</td></tr>
+    <tr><td>更新频率</td><td>实时，<b>每 5 秒</b>（2012-01 起实时，最初 15 秒）</td></tr>
+    <tr><td>历史起点</td><td>2010-11-19 开始发布；日终值回溯计算至 <b>1989-06-12</b></td></tr>
+    <tr><td>代码</td><td>Bloomberg <code>VNKY</code> · Refinitiv <code>.JNIV</code> · QUICK <code>145</code></td></tr>
+    <tr><td>免费入口</td><td><b>官方（推荐）</b>：<a href="https://indexes.nikkei.co.jp/en/nkave/index/profile?idx=nk225vi" target="_blank" rel="noopener" target="_blank">indexes.nikkei.co.jp — Nikkei 225 VI Profile</a>（实时图 + 月间盘突出iliations CSV 下载）<br>日文/日文对照页、factsheet：<code>indexes.nikkei.co.jp/nkave/archives/file/nikkei_stock_average_volatility_index_factsheet_en.pdf</code><br>JPX 衍生品页（日経平均VI期货制度）：<a href="https://www.jpx.co.jp/derivatives/products/vi/225-vi-futures/01.html" target="_blank" rel="noopener" target="_blank">jpx.co.jp/derivatives/products/vi/225-vi-futures/</a></td></tr>
+    <tr><td>可交易</td><td>有。大阪取引所上市<b>日経平均VI先物</b>（2012-02-27 起，交易单位＝指数值×10,000 円）。日本市场亦有相关 ETF/ETN 产品，但多为杠杆型，长期持有存在损耗<span class="small">注意 JPX 自己的警示：VI 在下跌行情中会急升，卖空 VI 期货可能造成极大损失</span></td></tr>
+  </tbody>
+</table></div>
+
+<div class="callout risk">
+  <b>JNIV 这个符号是个陷阱</b>
+  网上大量文章提到 "S&amp;P/JPX Nikkei 225 VIX（JNIV）"，容易让人以为日本有两个独立指数。<b>实测：Nikkei 官方 factsheet 的 Vendor Code 表里，<code>JNIV</code> 是 Thompson Reuters（现 Refinitiv）给日経平均VI 的代码</b>，Bloomberg 是 <code>VNKY</code>、QUICK 是 <code>145</code>。<br>
+  它们指向<b>同一个指数</b>—— Nikkei 官方公布的指数清单里没有第二个独立的 Nikkei 225 VIX。<span class="small">此外，大阪大学金融保险研究中心曾编制学术版 VXJ/VJO（同源 model-free 方法，NEEDS 数据源），可作为研究参考，但不是可交易的官方指数。</span><span class="small">来源：indexes.nikkei.co.jp 官方月度 factsheet（Vendor Code 栏），读取 2026-09-26。</span>
+</div>
+
+<h4>阈值怎么读（日本）</h4>
+<div class="tw"><table>
+  <thead><tr><th style="width:15%">区间</th><th style="width:22%">市场状态</th><th>历史对照</th></tr></thead>
+  <tbody>
+    <tr><td class="num">&lt; 20</td><td><span class="tag t-ok">低波动</span>情绪稳定</td><td>2019-01 附近约 15（Nikkei 官方 Factsheet 月次图）</td></tr>
+    <tr><td class="num">20 – 30</td><td><span class="tag t-ok">正常</span>核心震荡带</td><td>2015-01 约 25、2018-01 约 35（同上，月次图读数）</td></tr>
+    <tr><td class="num">30 – 40</td><td><span class="tag t-warn">紧张</span>恐慌开始放大</td><td>2018-02-09 收 36.05（大和ネクスト银行引 日経プロフィル）</td></tr>
+    <tr><td class="num">40 – 70</td><td><span class="tag t-risk">恐慌</span>系统性压力</td><td>2011-03 震灾月內高点 <b>69.88</b>（日経Profile 月次）</td></tr>
+    <tr><td class="num">&gt; 70</td><td><span class="tag t-risk">危机</span></td><td>2008-10 雷曼月內高点 <b>92.03</b>（日経Profile 月次）</td></tr>
+  </tbody>
+</table></div>
+<div class="src">来源：月度极值引自 Nikkei 官方『日経プロフィル』，经大和ネクスト银行 2018-12-19 专栏转引 — <b>属二手来源，需核实原文</b>。2018-02-09 收盘值同源。实操经验带（低波动 / 20–30 正常 / &gt;30 恐慌）来自财经媒体整理，<b>是经验区间而非官方定义</b>，不要用它在回测里做硬阈值。</div>
+
+<div class="barscale">
+  <div style="background:#27ae60;flex:20">&lt;20 低波</div>
+  <div style="background:#7dcea0;flex:10">20–30 正常</div>
+  <div style="background:#f39c12;flex:10">30–40 紧张</div>
+  <div style="background:#e67e22;flex:30">40–70 恐慌</div>
+  <div style="background:#c0392b;flex:30">&gt;70 危机</div>
+</div>
+
+<h3><span class="tag t-de">德国</span> VDAX 与 <span class="tag t-eu">泛欧</span> VSTOXX</h3>
+<p>这两个是同一套方法论（Goldman Sachs + Deutsche Börse 联合开发，现由 <b>STOXX Ltd.</b> 计算），区别只在标的：VDAX 基于 Eurex 的 DAX 期权，VSTOXX 基于 EURO STOXX 50 期权。法国也包括在 VSTOXX 的成分里。</p>
+
+<div class="tw"><table>
+  <thead><tr><th style="width:16%">项</th><th>VDAX</th><th>VSTOXX</th></tr></thead>
+  <tbody>
+    <tr><td>标的</td><td>DAX（德股 40 蓝筹）</td><td>EURO STOXX 50（欧元区 50 蓝筹，含德法）</td></tr>
+    <tr><td>计算方</td><td colspan="2">STOXX Ltd.（分支机构位于 Zurich），Eurex 提供期权数据</td></tr>
+    <tr><td>算法</td><td colspan="2">Model-free：取 ATM 与 OTM 期权的<b>隐含方差平方根</b>（variance-swap fair strike 等价），插值到固定到期</td></tr>
+    <tr><td>主指数</td><td colspan="2"><b>12 个</b>固定到期：30, 60, 90, 120, 150, 180, 210, 240, 270, 300, 330, 360 天（不随某月期权到期而到期）</td></tr>
+    <tr><td>子指数</td><td colspan="2"><b>8 个</b>：1M / 2M / 3M / 6M / 9M / 12M / 18M / 24M EUR</td></tr>
+    <tr><td>更新</td><td colspan="2">实时（每秒级），计算窗口 08:50–17:30 CET，<b>分发窗口 09:15–17:30 CET</b></td></tr>
+    <tr><td>ISIN / 代码</td><td>VDAX <code>V1X</code> · DE000A0DMX99 · Bloomberg <code>V1X INDEX</code>；子指数 V4F1–V4F8；60D=WDOY … 360D=WDQ8</td><td>VSTOXX <code>V2TX</code> · DE000A0C3QF1 · Bloomberg <code>V2X Index</code>；主指数 VSTX60 等 = DE000A1A4LU0</td></tr>
+    <tr><td>基期 / 历史</td><td>VDAX-NEW 2005-04-18 起算（数据回溯至 1992-01）；<b>2024-09 正式更名为 VDAX</b></td><td>100 @ 1991-12-31；日度历史自 <b>1999-01</b> 可下载；VSTOXX(30天) 2005-04-20  inception</td></tr>
+    <tr><td>免费入口</td><td colspan="2">官方：<a href="https://stoxx.com/index/v1x/" target="_blank" rel="noopener" target="_blank">stoxx.com/index/v1x/</a> · <a href="https://stoxx.com/index/v2tx/" target="_blank" rel="noopener" target="_blank">stoxx.com/index/v2tx/</a> · <a href="https://www.dax-indices.com" target="_blank" rel="noopener" target="_blank">dax-indices.com</a><br>历史数据（txt 直下）：<code>stoxx.com/document/Indices/Current/HistoricalData/h_vstoxx.txt</code><br>编制说明书：<code>Guide to the VDAX Volatility Indices</code>（dax-indices.com PDF）</td></tr>
+    <tr><td>可交易</td><td>VDAX 期货流动性很差（学术文献称"难以交易"）</td><td>VSTOXX Mini Futures / Options 在 Eurex 上市，流动性较好</td></tr>
+  </tbody>
+</table></div>
+<div class="src">来源：STOXX 官网 VDAX / VSTOXX 指数页、VSTOXX factsheet、dax-indices.com《Guide to the VDAX Volatility Indices》（v3.5）与《Guide to the Volatility Indices of Deutsche Börse》（v2.7），读取 2026-09-26，均属一手来源。</div>
+
+<h4>阈值怎么读（德国 / 泛欧）</h4>
+<div class="tw"><table>
+  <thead><tr><th style="width:15%">区间</th><th style="width:22%">市场状态</th><th>对照</th></tr></thead>
+  <tbody>
+    <tr><td class="num">&lt; 14</td><td><span class="tag t-ok">极度平静</span></td><td>VSTOXX 52 周低 14.05（2025-12-23）；VDAX 52 周低 13.62（2025-12-23）</td></tr>
+    <tr><td class="num">14 – 20</td><td><span class="tag t-ok">正常</span></td><td>多数时间区间</td></tr>
+    <tr><td class="num">20 – 28</td><td><span class="tag t-warn">紧张</span></td><td>VSTOXX 与 VDAX 的 YTD 变动分别为 +13.24% / +32.12%，2026 年内曾有持续抬升</td></tr>
+    <tr><td class="num">28 – 40</td><td><span class="tag t-risk">恐慌</span></td><td>两者 52 周高分别为 34.78 / 33.67（均为 2026-03-27）</td></tr>
+    <tr><td class="num">&gt; 50</td><td><span class="tag t-risk">系统性风险</span></td><td>欧债危机期间曾达近 70；2008-10-16 历史峰值约 <b>87.5</b><span class="small">（该数字来自中文百科条目，<b>需核实原文</b>）</span></td></tr>
+  </tbody>
+</table></div>
+<div class="src">52 周高低、YTD 变动来源：STOXX 官网指数页，2026-09-26 读取（一手）。历史极值 87.51 为二手来源、需核实。</div>
+
+<div class="barscale">
+  <div style="background:#27ae60;flex:14">&lt;14 极静</div>
+  <div style="background:#7dcea0;flex:6">14–20 正常</div>
+  <div style="background:#f39c12;flex:8">20–28 紧张</div>
+  <div style="background:#e67e22;flex:12">28–40 恐慌</div>
+  <div style="background:#c0392b;flex:60">&gt;50 系统性</div>
+</div>
+
+<h3><span class="tag t-fr">法国</span> VCAC（CAC 40 Volatility Index）</h3>
+<div class="tw"><table>
+  <thead><tr><th style="width:16%">项</th><th>内容</th></tr></thead>
+  <tbody>
+    <tr><td>发布方</td><td>Euronext（泛欧交易所）</td></tr>
+    <tr><td>算法 / 期限</td><td>Model-free 30 天隐含波动率，采用 VIX 方法体系</td></tr>
+    <tr><td>起算</td><td>2007-09（同批推出的还有 VAEX 荷兰、VBEL 比利时）</td></tr>
+    <tr><td>ISIN</td><td><code>QS0011052139</code>（见 Euronext 月度指数表现文件的历史记录）</td></tr>
+    <tr><td>入口</td><td>Euronext 官网未在旗舰指数区直接展示 VCAC 的实时页；Euronext 在自家研究报告（如《Equity market quality in times of volatility》）里以 VCAC 作为法国市场波动率标准量度</td></tr>
+    <tr><td>实务建议</td><td><b>法国敞口优先看 VSTOXX</b>（STOXX 官网免费、实时、有完整期限结构），VCAC 只作为报导/交叉验证用</td></tr>
+  </tbody>
+</table></div>
+
+<div class="callout risk">
+  <b>实测：第三方 VCAC 页面返回静态快照</b>
+  <code>markets.businessinsider.com/index/cac-40-volatility-index</code> 至今显示 <b>18.96（−13.31%）</b>，但<b>交易日标注是 2020-12-31</b>，K线区间停在 Aug–Sep 2020。<br>
+  这跟你之前碰到过的静态快照是同一类问题 —— 页面还在更新 CSS 和"分析师观点"板块，<b>唯独行情数字冻了六年</b>。<b>不要把任何 businessinsider / 聚合站的 VCAC 数字用于决策。</b>
+</div>
+
+<h2>五、问卷调查类指标：数值口径与「正常」在哪</h2>
+<p>这类指标不像波动率那样"越高越恐慌" —— 它们是<b>扩散指数（DI）</b>：正数=乐观多于悲观，零轴是关键，不是 50。</p>
+
+<div class="tw"><table>
+  <thead>
+    <tr><th style="width:13%">指标</th><th style="width:8%">国家</th><th style="width:9%">频率</th><th style="width:11%">最新值</th><th style="width:22%">口径</th><th>读法</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><b>Sentix 投资者信心</b></td><td><span class="tag t-de">德</span><span class="tag t-eu">欧</span></td><td>月度</td>
+      <td class="num">欧元区 <b>5.1</b><br>德国 <b>−2.8</b><br><span class="small">2026-09</span></td>
+      <td>乐观% − 悲观%；分项：现状 / 预期。样本 1,052 人（含 209 机构）</td>
+      <td>零轴以上=净乐观。<b>历史只在危机时深负</b>；德国分项长期低于欧元区整体。近值已达 2022-02 以来最高（欧元区）</td>
+    </tr>
+    <tr>
+      <td><b>法兰克福 DAX Sentiment</b></td><td><span class="tag t-de">德</span></td><td>周度<br><span class="small">周三盘后</span></td>
+      <td class="num">—<br><span class="small">官网为准</span></td>
+      <td>机构组 / 私人组分别公布；−100（极悲观）~ +100（极乐观）。另有 Bull/Bear Index（约 600 名散户）</td>
+      <td><b>逆向指标</b>：由行为金融机构 Goldberg &amp; Goldberg 与德交所合作，Joachim Goldberg 撰写解读。数值极端时反向参考意义更强</td>
+    </tr>
+    <tr>
+      <td><b>ifo 商业景气指数</b></td><td><span class="tag t-de">德</span></td><td>月度</td>
+      <td class="num"><b>89.9</b><br><span class="small">2026-09（前值 88.8）</span></td>
+      <td>约 9,000 家企业；现状 + 预期平衡的<b>几何变换均值</b>，<b>2015 年 = 100 归一化</b></td>
+      <td>数值是"相对 2015 年"的水平，<b>不是景气与否的绝对分界</b>。看方向连续性和四象限「景气循环时钟」比看单点有用</td>
+    </tr>
+    <tr>
+      <td><b>ZEW 经济景气指数</b></td><td><span class="tag t-de">德</span><span class="tag t-eu">欧</span></td><td>月度<br><span class="small">第三周</span></td>
+      <td class="num"><b>34.7</b><br><span class="small">2026-09（前值 34.2）<br>现状分项 −47.1</span></td>
+      <td>约 300 位银行/保险/企业金融专家，6 个月预期净差额</td>
+      <td>零轴以上=净乐观。1991–2026 均值 21.3，历史高 89.6（2000-01）、低 −63.9（2008-07）。<b>现状分项与预期分项常年背离是德国的常态</b></td>
+    </tr>
+    <tr>
+      <td><b>INSEE 商业景气（综合）</b></td><td><span class="tag t-fr">法</span></td><td>月度</td>
+      <td class="num"><b>96</b><br><span class="small">2026-09（前值 98）</span></td>
+      <td>企业主对"相对正常"的回答给付平衡点，因子分析合成；<b>长期均值 100，标准差 10</b></td>
+      <td>100 = 长期均值。<b>低于 96 通常对应景气走弱</b>；1977–2026 均值 100.04，历史高 121（1999-12）、低 46（2020-04）</td>
+    </tr>
+    <tr>
+      <td><b>INSEE 家庭信心</b></td><td><span class="tag t-fr">法</span></td><td>月度</td><td class="num">86<br><span class="small">2026-09</span></td>
+      <td>约 2,000 户电话调查；同为 100 = 长期均值口径</td>
+      <td>法国这个数长期偏低（疫情后持续在 80 区间），<b>不能拿美国密歇根消费信心的刻度套</b></td>
+    </tr>
+    <tr>
+      <td><b>野村 I-View Index</b></td><td><span class="tag t-jp">日</span></td><td>月度</td>
+      <td class="num">—<br><span class="small">官网为准</span></td>
+      <td>个人投资者对未来 3 个月日経225 方向的 DI，<b>−100 ~ +100</b>。自 2006-04 起</td>
+      <td>正值越大越偏多。<b>极值区（±40 以上）逆向意义强</b>，因为它反映的是散户情绪</td>
+    </tr>
+    <tr>
+      <td><b>楽天DI</b></td><td><span class="tag t-jp">日</span></td><td>月度</td>
+      <td class="num">—</td>
+      <td>约 2,400 名以上個人投资者，对日経平均 / 美元兑日元 1 个月与 3 个月预期的 DI</td>
+      <td>同上。两个 DI 一起看可以看分叉（股价看多但汇率看空 = 出口股逻辑）</td>
+    </tr>
+  </tbody>
+</table></div>
+<div class="src">数值与时点：Sentix 欧元区 5.1 / 德国 −2.8（2026-09，调查期 9/3–9/5，样本 1,052）经 Reuters 报道，多家转载；ifo 89.9（2026-09-24 发布，来源 ifo.de 一手）；ZEW 34.7 / 现状 −47.1（2026-09-15 发布，来源 TradingEconomics 引 ZEW，非一手）；INSEE 综合景气 96 / 家庭信心 86（2026-09-24 发布，来源 insee.fr 与 TradingEconomics 引 INSEE）。均为 2026 年 9 月最新一期。</div>
+
+<h2>六、查询入口总表 · 附踩坑清单</h2>
+<div class="tw"><table>
+  <thead>
+    <tr><th style="width:15%">指标</th><th style="width:28%">官方免费入口（首选）</th><th style="width:16%">终端代码</th><th>坑</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><b>日経平均VI</b></td>
+      <td><a href="https://indexes.nikkei.co.jp/en/nkave/index/profile?idx=nk225vi" target="_blank" rel="noopener" target="_blank">indexes.nikkei.co.jp — Nikkei 225 VI</a></td>
+      <td>BBG <code>VNKY</code><br>RT <code>.JNIV</code><br>QUICK <code>145</code></td>
+      <td>用 JNIV 搜可能会被引到已失效的"S&amp;P/JPX"版本描述；以 Nikkei 官网为准</td>
+    </tr>
+    <tr>
+      <td><b>VDAX</b></td>
+      <td><a href="https://stoxx.com/index/v1x/" target="_blank" rel="noopener" target="_blank">stoxx.com/index/v1x/</a> · <a href="https://www.dax-indices.com" target="_blank" rel="noopener" target="_blank">dax-indices.com</a></td>
+      <td>BBG <code>V1X INDEX</code><br>ISIN DE000A0DMX99</td>
+      <td>VDAX-NEW 已于 <b>2024-09 更名 VDAX</b>；旧 45 天 VDAX 于 2016-09 停算，<b>长历史序列不可直接拼接</b></td>
+    </tr>
+    <tr>
+      <td><b>VSTOXX</b></td>
+      <td><a href="https://stoxx.com/index/v2tx/" target="_blank" rel="noopener" target="_blank">stoxx.com/index/v2tx/</a><br>历史 txt：<code>h_vstoxx.txt</code></td>
+      <td>BBG <code>V2X Index</code><br>ISIN DE000A0C3QF1</td>
+      <td>计算窗口 08:50 CET 起但<b>分发自 09:15 CET 起</b>，晨间第一个数可能缺 FAIR</td>
+    </tr>
+    <tr>
+      <td><b>VCAC</b></td>
+      <td>Euronext 官网（无直接实时页，需进 live.euronext 检索 QS0011052139）</td>
+      <td>ISIN QS0011052139</td>
+      <td><span class="tag t-risk">高危</span> Markets Insider 等第三方显示的是 <b>2020-12-31</b> 快照</td>
+    </tr>
+    <tr>
+      <td><b>DAX Sentiment</b></td>
+      <td><a href="https://www.boerse-frankfurt.de/sentiment" target="_blank" rel="noopener" target="_blank">boerse-frankfurt.de/sentiment</a>（现已重定向至 live.deutsche-boerse.com）</td>
+      <td>—</td>
+      <td>周度发布、需订阅/邮件；为逆向指标，别当趋势跟随读</td>
+    </tr>
+    <tr>
+      <td><b>Sentix</b></td>
+      <td><a href="https://www.sentix.de" target="_blank" rel="noopener" target="_blank">sentix.de</a>（德国/欧元区/日本分项 + 周度 Global Investor Survey）</td>
+      <td>—</td>
+      <td>完整报告付费，月度新闻稿免费可读。<b>注意调查期是月初</b>（2026-09 数据调查期为 9/3–9/5，<b>不是月末</b>）</td>
+    </tr>
+    <tr>
+      <td><b>ifo</b></td>
+      <td><a href="https://www.ifo.de" target="_blank" rel="noopener" target="_blank">ifo.de</a>（月度新闻稿 + 时间序列下载）</td>
+      <td>—</td>
+      <td>基准是 <b>2015=100</b>，跨版本比较前先确认 normalization 年份</td>
+    </tr>
+    <tr>
+      <td><b>ZEW</b></td>
+      <td><a href="https://www.zew.de" target="_blank" rel="noopener" target="_blank">zew.de</a>（月度 Financial Market Report PDF + 历史序列）</td>
+      <td>—</td>
+      <td>德国与欧元区口径并列发布，<b>两者方向可能背离</b>（2026-09 德国 +0.5 而欧元区 −5.6）</td>
+    </tr>
+    <tr>
+      <td><b>INSEE</b></td>
+      <td><a href="https://www.insee.fr" target="_blank" rel="noopener" target="_blank">insee.fr</a>（Informations Rapides 快报）</td>
+      <td>—</td>
+      <td>"商业景气综合"与"工业景气"是两个数（2026-09 为 96 vs 101），别混</td>
+    </tr>
+    <tr>
+      <td><b>JPX 资金/结构</b></td>
+      <td><a href="https://www.jpx.co.jp/markets/statistics-equities/investor-type/index.html" target="_blank" rel="noopener" target="_blank">投資部門別売買状況</a> · <a href="https://www.jpx.co.jp/markets/public/short-selling/index.html" target="_blank" rel="noopener" target="_blank">空売り残高報告</a></td>
+      <td>J-Quants API</td>
+      <td>投資部門別为<b>每周第四营业日</b>发布前周数据，T+滞后；日频卖方 accuse balance 需 TMI / J-Quants Pro 付费</td>
+    </tr>
+    <tr>
+      <td><b>iTraxx Europe</b></td>
+      <td>ICE / S&amp;P Dow Jones Indices 指数家族页；荣数量 LCH CDSClear</td>
+      <td>—</td>
+      <td>5Y 为主流动点，<b>每 3/20 与 9/20 换月（roll）</b>，新 series 才有流动性，历史 series 前后不连续</td>
+    </tr>
+  </tbody>
+</table></div>
+
+<h2>七、没有官方复合指标怎么办：自己搭一个</h2>
+<p>既然日德法没有官方 Fear &amp; Greed，而这套东西本质就是<b>"把若干已标准化的情绪代理变量等权/加权合成 0–100"</b>，那就自己合成 —— 而且比 CNN 那套更贴合你的框架（CNN 的权重是均等的，且只覆盖美国）。</p>
+
+<div class="callout info">
+  <b>先说清楚：网上那些"欧洲 Fear &amp; Greed"站</b>
+  <code>feargreedindex.org</code> 这类站点给出的是 0–100 的读数，但它自己在页面底部明确写了：'<i>should not be interpreted as a claim that FearGreedIndex.org is affiliated with, owned by, or identical to CNN's index</i>' 与 CNN 无关。<b>可以用，但要当成"第三方仿制品"，不能当权威源。</b><br>
+  加密世界的那版更乱：CoinMarketCap（分档：≤19 极度恐惧 / 20–39 恐惧 / 40–59 中性 / 60–79 贪婪 / ≥80 极度贪婪）与 Alternative.me 用不同组件，同一天能差十几点 —— <b>挑一个源盯到底，不要混读</b>。
+</div>
+
+<h3>日本版：建议组件与权重</h3>
+<div class="tw"><table>
+  <thead><tr><th style="width:24%">组件</th><th style="width:12%">建议权重</th><th style="width:22%">数据源</th><th>标准化方式</th></tr></thead>
+  <tbody>
+    <tr><td>日経平均VI 水平</td><td class="num">25%</td><td>Nikkei 官网（免费，5 秒刷新）</td><td>取反：`100 − percentile(VI, 3y)`</td></tr>
+    <tr><td>VI 期限斜率（近月/次月）</td><td class="num">15%</td><td>OSE 期权 / 自行算</td><td>陡峭下行 = 恐慌</td></tr>
+    <tr><td>日経225 vs 125 日均价动量</td><td class="num">15%</td><td>日経 / Stooq CSV</td><td>Z-score</td></tr>
+    <tr><td>外国人买卖净额（週次）</td><td class="num">20%</td><td>JPX 投資部門別売買状況</td><td>4 周滚动 Z-score（<b>滞后，别指望它做短线</b>）</td></tr>
+    <tr><td>信用評価損益率 / 信用倍率</td><td class="num">15%</td><td>JPX 信用取引残高</td><td>历史分位，<b>逆向</b>（倍率高=过热）</td></tr>
+    <tr><td>USD/JPY 与日経的联动错位</td><td class="num">10%</td><td>免费 FX 源</td><td>背离程度</td></tr>
+  </tbody>
+</table></div>
+<p class="small"><b>两个不建议你塞进去的：</b>① 问卷调查（I-View / 楽天DI）—— 月度频率太低，混进日频指数只会引入阶跃；② 已经隐含在 VI 里的东西（ Put/Call 比率）——重复计数。这两个适合作为<b>月度校准层</b>单独看，而不是日频合成因子。</p>
+
+<h3>欧洲版：建议组件与权重</h3>
+<div class="tw"><table>
+  <thead><tr><th style="width:24%">组件</th><th style="width:12%">建议权重</th><th style="width:22%">数据源</th><th>标准化方式</th></tr></thead>
+  <tbody>
+    <tr><td>VSTOXX 水平</td><td class="num">25%</td><td>STOXX 官网 / h_vstoxx.txt（免费直下）</td><td>取反：`100 − percentile(VSTOXX, 3y)`</td></tr>
+    <tr><td><b>VSTOXX 期限结构斜率</b>（1M vs 3M）<br><span class="small">这是欧洲独有的优势项</span></td><td class="num">20%</td><td>子指数（8 个可直接取）</td><td>倒挂 = 恐慌</td></tr>
+    <tr><td>VSTOXX − VIX 价差</td><td class="num">15%</td><td>STOXX + CBOE</td><td>走阔 = 欧洲相对更弱</td></tr>
+    <tr><td>iTraxx Xover 5Y</td><td class="num">20%</td><td>S&amp;P DJI / ICE（延迟）</td><td>历史分位取反</td></tr>
+    <tr><td>Sentix / ZEW / ifo（月度层）</td><td class="num">20%</td><td>各官网</td><td>月度更新，做<b>上层校准</b>而非日频成分</td></tr>
+  </tbody>
+</table></div>
+
+<div class="callout">
+  <b>方法论红线（如果你真要拿它做策略）</b>
+  <ul class="tight">
+    <li><b>禁止用全样本分位数做标准化</b> —— 那是典型的 look-ahead。训练集只能用 t 时刻之前的数据滚动估计。</li>
+    <li><b>VSTOXX / VDAX 在 2016-09（旧 VDAX 停算）和 2024-09（更名）有两个口径断点</b>，长回测要么截断要么单独处理。</li>
+    <li><b>合成指数必须跑赢"傻规则"基线</b>（例如单用 VSTOXX 历史分位）。合了六个因子只跟单因子打平，说明后五项全是噪音。</li>
+    <li>成分里一旦出现<b>月度数据</b>，日频指数就会出现"月内不动、月初跳变"，这是发布日历伪影，不是信号。</li>
+  </ul>
+</div>
+
+<h2>八、一句话回答你的三个问题</h2>
+<div class="tw"><table>
+  <thead><tr><th style="width:22%">你的问题</th><th>答案</th></tr></thead>
+  <tbody>
+    <tr><td><b>有没有像美国那么多的指标？</b></td><td>有核心的那几个，但<b>没有美国那么"密"</b>。日本 1 个 / 德国 1 个 / 法国 1 个 / 泛欧 1 个，对比美国 CBOE 的 10+ 个家族成员。缺的是板块级波动率（VXN 类）、高阶矩（VVIX/SKEW）和官方复合情绪指标。<b>唯一的例外是欧洲的期限结构家族（12+8），比美国更完整。</b></td></tr>
+    <tr><td><b>哪里可以查？</b></td><td><b>官方四件套</b>：<a href="https://indexes.nikkei.co.jp/en/nkave/index/profile?idx=nk225vi" target="_blank" rel="noopener" target="_blank">Nikkei Indexes</a>（日経VI）、<a href="https://stoxx.com/index/v1x/" target="_blank" rel="noopener" target="_blank">STOXX</a>（VDAX / VSTOXX）、<a href="https://www.sentix.de" target="_blank" rel="noopener" target="_blank">Sentix</a>、<a href="https://www.insee.fr" target="_blank" rel="noopener" target="_blank">INSEE</a>；德国企业景气看 <a href="https://www.ifo.de" target="_blank" rel="noopener" target="_blank">ifo</a> 与 <a href="https://www.zew.de" target="_blank" rel="noopener" target="_blank">ZEW</a>；德国散户情绪看 <a href="https://www.boerse-frankfurt.de/sentiment" target="_blank" rel="noopener" target="_blank">Börse Frankfurt Sentiment</a>；日本资金面看 <a href="https://www.jpx.co.jp/markets/statistics-equities/investor-type/index.html" target="_blank" rel="noopener" target="_blank">JPX 投資部門別</a>。<b>VCAC 请回避第三方站。</b></td></tr>
+    <tr><td><b>数值代表什么？</b></td><td>波动率类的<b>读数是年化百分数的预期波动区间</b>：例如 VDAX 20 对应 DAX 4,000 时，市场预期一个月内约 ±230 点（3,770–4,230）。<b>分档：日本 &lt;20 低 / 20–30 正常 / &gt;30 紧张 / &gt;40 恐慌；德国欧洲 &lt;14 极静 / 14–20 正常 / 20–28 紧张 / 28–40 恐慌。问卷调查类是扩散指数，看零轴或 100（长期均值），不是越高越好。</b></td></tr>
+  </tbody>
+</table></div>
+
+<div class="disc">
+  <b>免责声明</b>：以上内容基于公开数据和量化分析，仅供参考，不构成投资建议。市场有风险，投资需谨慎。任何投资决策应结合个人风险承受能力、资金状况和投资目标独立判断，必要时咨询持牌专业机构。过往表现不预示未来收益。
+  <div style="margin-top:10px" class="small">
+    <b>数据来源与时效说明</b>：本报告所有行情数值均为 2026-09-25 各市场最近一次收盘，报告编制于 2026-09-26（周六，主要交易所休市）。一手来源：Nikkei Indexes 官网、STOXX / dax-indices.com 指数页与编制手册、ifo.de、insee.fr、JPX 官网、Frankfurt Stock Exchange 词汇库、日経月次 Factsheet。二手来源（已标注"需核实原文"）：Reuters 转载的 Sentix、TradingEconomics 引 ZEW/INSEE、大和ネクスト银行转引的日経VI 历史月值、中文百科的 VSTOXX 历史峰值。冲突处理：VDAX 当前值三个源不一致，已显式列出并说明为缓存漂移；Markets Insider 的 VCAC 快照已排除。
+  </div>
+</div>
+
+</div>
+
+<script>
+var volData = [
+  { name: '日経平均VI（日本）', v: 20.30, lo: null, hi: null, c: '#c0392b' },
+  { name: 'VDAX（德国）',       v: 19.93, lo: 13.62, hi: 33.67, c: '#2c6ecb' },
+  { name: 'VSTOXX（泛欧）',     v: 17.25, lo: 14.05, hi: 34.78, c: '#16a085' },
+  { name: 'VIX（美国·参照）',   v: 14.87, lo: null, hi: null, c: '#95a5a6' }
+];
+
+var rows = volData.slice().sort(function (a, b) { return a.v - b.v; });
+
+var __mc = echarts.init(document.getElementById('mainChart'));
+__mc.setOption({
+  title: {
+    text: '2026-09-25 收盘：四国恐慌温度计',
+    subtext: '单位：年化 % ｜ 灰色横条为该指数近 52 周区间（仅 VDAX / VSTOXX 有官方 52 周数据）',
+    left: 'center',
+    textStyle: { fontSize: 15, color: '#1a1d21' },
+    subtextStyle: { fontSize: 11, color: '#7b838c' }
+  },
+  tooltip: {
+    trigger: 'axis',
+    axisPointer: { type: 'shadow' },
+    formatter: function (p) {
+      var d = rows[p[0].dataIndex];
+      var s = d.name + '　<b>' + d.v.toFixed(2) + '</b>';
+      if (d.lo !== null) {
+        s += '<br/>52周区间：' + d.lo + ' — ' + d.hi;
+      } else {
+        s += '<br/><span style="color:#999">52周区间数据未取得</span>';
+      }
+      return s;
+    }
+  },
+  grid: { left: 130, right: 70, top: 78, bottom: 46 },
+  xAxis: { type: 'value', name: '年化 %', max: 36, splitLine: { lineStyle: { color: '#eef0f3' } } },
+  yAxis: {
+    type: 'category',
+    data: rows.map(function (d) { return d.name; }),
+    axisLabel: { fontSize: 12.5, color: '#1a1d21' }
+  },
+  series: [
+    {
+      name: 'range',
+      type: 'bar',
+      barWidth: 12,
+      itemStyle: { color: 'transparent', borderColor: '#c8ced6', borderType: 'dashed', borderWidth: 1 },
+      data: rows.map(function (d) { return d.lo === null ? '-' : d.lo; }),
+      silent: true,
+      z: 1
+    },
+    {
+      name: '52周高值区间',
+      type: 'bar',
+      barWidth: 12,
+      barGap: '-100%',
+      itemStyle: { color: 'rgba(160,170,180,0.28)' },
+      data: rows.map(function (d) {
+        if (d.lo === null) { return { value: 0 }; }
+        return { value: d.hi - d.lo };
+      }),
+      z: 2
+    },
+    {
+      name: '当前值',
+      type: 'bar',
+      barWidth: 22,
+      barGap: '-100%',
+      data: rows.map(function (d) {
+        return { value: d.v, itemStyle: { color: d.c, borderRadius: [0, 3, 3, 0] } };
+      }),
+      label: {
+        show: true,
+        position: 'right',
+        formatter: function (o) { return rows[o.dataIndex].v.toFixed(2); },
+        fontSize: 12.5,
+        fontWeight: 'bold',
+        color: '#1a1d21'
+      },
+      z: 3
+    }
+  ]
+});
+
+/* 窄屏适配：390px 下左侧 130px 标签留白 + 12.5px 字号会把绘图区挤没。
+   顺带补 resize 重绘 —— 原版没有监听，改窗口大小或转屏后图表不会跟着变。 */
+function fitChart() {
+  var narrow = window.innerWidth < 720;
+  __mc.setOption({
+    grid: { left: narrow ? 92 : 130, right: narrow ? 26 : 70,
+            top: narrow ? 96 : 78, bottom: narrow ? 28 : 46 },
+    title: { textStyle: { fontSize: narrow ? 13 : 15 },
+             subtextStyle: { fontSize: narrow ? 10 : 11 } },
+    yAxis: { axisLabel: { fontSize: narrow ? 11 : 12.5 } }
+  });
+  __mc.resize();
+}
+fitChart();
+window.addEventListener('resize', fitChart);
+
+function switchView(kind) {
+  var isChart = kind === 'chart';
+  document.getElementById('viewChart').style.display = isChart ? 'block' : 'none';
+  document.getElementById('viewTable').style.display = isChart ? 'none' : 'block';
+  document.getElementById('btnChart').className = isChart ? 'on' : '';
+  document.getElementById('btnTable').className = isChart ? '' : 'on';
+}
+</script>
+</body>
+</html>

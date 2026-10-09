@@ -1518,3 +1518,68 @@ systemctl restart billboard
 ### 已知不修
 
 无。义项的同义词、例句都来自上游，本站不落库，上游质量即本站质量。
+
+---
+
+## 2026-10-10 清理：把三次不同时间的未提交改动拆成 7 个提交并 push
+
+### 背景
+
+`git status` 里堆了 16 个已改文件 + 8 个未跟踪路径，横跨 09-23 / 09-25 / 09-26 三次工作，
+全都没进 git。其中一部分（ndxspx、jdemacro 两个新模块）连文件都是 untracked。
+**只要跑一次 `deploy.sh`（`git pull --ff-only`），这批东西就地蒸发。**
+09-23 已经因为同一件事翻过一次车（见 commit `114588c` 里记的事故）。
+
+### 拆分结果（7 个提交，按"一件逻辑事一个提交"拆）
+
+| commit | 主题 | 主要文件 |
+|---|---|---|
+| `3750e93` | fix(front) 资源版本号不再被 replaceAll 破坏 / tab 栏横滚提示 / iframe 高度改 dvh | index.html, app.js, login.html, modules/{etf,globalradar,life,timing}.js, app.css(第 1 段) |
+| `d23a635` | fix(etf) 东财 502 → 行情/K线走腾讯，资金流按日归档 | src/etf-data.js, public/etf/index.html, public/etf/vendor/echarts.min.js |
+| `39a2f33` | feat(n225) 「刷新」改成真刷新（后端重跑 Python） | src/n225-api.js, src/n225-data.js, modules/n225.js |
+| `c1bf2fc` | fix(swing) 东财裸域 502 → 数字子域 + 腾讯兜底 | src/swing-data.js, modules/swing.js |
+| `f7abe36` | docs(dividend50) 页脚补上中债降级东财 | modules/dividend50.js |
+| `99570c7` | feat(ndxspx) 新增「NASDAQ & S&P 决策」tab(order 53) | modules/ndxspx.js, modules/ndxspx.js(前端), src/ndxspx-*.js, app.css(第 2 段), smoke_frontend.mjs |
+| `9dedf2f` | feat(jdemacro) 新增「日/德/法宏观」tab(order 60) | modules/jdemacro.js, modules/jdemacro.js(前端), public/jde-macro/ |
+| `114588c` | chore(scripts) 09-23 挂载事故的一次性修复脚本，留作事故记录 | scripts/patch-mounts.mjs |
+
+（vocab / finance / drawdown 三个是同日更早的提交，见 `d94ef47` `570d843` `d841b1a`。）
+
+### 一条必须记住的规矩
+
+**这台机器上改完任何东西，必须 commit 且 push。只 commit 不 push 一样会被 `deploy.sh`
+的 `git pull --ff-only` 冲掉。**
+`git status -sb` 里出现 `[ahead N]` 就说明有东西还没上 origin —— 那就是下一颗雷。
+推之前先 `git fetch` + `git merge-base --is-ancestor origin/main HEAD`，
+是纯快进才推；不是就停下来人工看，别 force。
+
+### 技巧：一个文件里的两段改动想拆成两个提交
+
+`app.css` 同时含「全局渐变背景」（属于前端基建那批）和「690 行 .nspx-* 样式」（属于 ndxspx）。
+拆法（**不碰工作区**，所以文件本身零风险）：
+
+```bash
+git diff public/css/app.css > /tmp/appcss.patch
+# 用 grep -n "^@@" 找到两个 hunk 的起始行，按行号切开，各自补上 patch 的前 4 行文件头
+head -4 /tmp/appcss.patch > /tmp/h1.patch; sed -n '5,18p'  /tmp/appcss.patch >> /tmp/h1.patch
+head -4 /tmp/appcss.patch > /tmp/h2.patch; sed -n '19,$p'  /tmp/appcss.patch >> /tmp/h2.patch
+git apply --cached --check /tmp/h1.patch   # 先试算
+git apply --cached /tmp/h1.patch           # 只把 hunk1 放进暂存区
+git add <同批的其他文件> && git commit      # 提交的是暂存区 = hunk1
+# 之后工作区还留着 hunk2，下一个提交再 git add app.css
+```
+
+`git apply --cached` 只动索引不动磁盘，失败了也就是"什么都没暂存"，不会弄坏文件。
+
+### 顺带修的杂事
+
+- `public/etf/vendor/` 与几个 root 建的源码文件统一 `chown billboard:billboard`
+  （跟 10-01 / 10-10 那两次 EACCES 是同一类隐患，源码虽只读，属主乱了以后改起来容易踩）。
+- `public/jde-macro/index.html.bak-mobile-20260926-151444` 被 `.gitignore` 的 `*.bak-*` 挡住，
+  不会进仓库 —— 这是有意的，别手动 `git add -f`。
+
+### 验证（推送后）
+
+- `git status --short` 空、`git status -sb` 无 `[ahead N]` → 与 origin/main 完全一致。
+- 服务 `active`，关键路由自检出站正常。
+- 全程没有删任何文件、没有 `git checkout --` / `reset` / force push。

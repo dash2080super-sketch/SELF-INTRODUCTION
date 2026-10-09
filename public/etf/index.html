@@ -11,7 +11,10 @@
     --shadow:0 1px 2px rgba(16,24,40,.04),0 4px 12px rgba(16,24,40,.06);
   }
   *{box-sizing:border-box}
-  body{margin:0;background:var(--bg);color:var(--text);
+  body{margin:0;color:var(--text);
+       background-color:var(--bg);
+       background-image:linear-gradient(180deg,#f7fafd 0%,#f5f6f8 62%,#f7f8fa 100%);
+       background-repeat:no-repeat;background-size:100% 100vh;
        font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;}
   .wrap{max-width:1280px;margin:0 auto;padding:16px 18px 60px}
   button{font:inherit;cursor:pointer;border:1px solid var(--line);background:#fff;color:var(--text);
@@ -183,8 +186,14 @@
     · <b>QDII 溢价会被系统性放大</b>：跨境 ETF 的净值 T+1/T+2 才公布，价格已经先跑了一段，
       算出来的溢价里混着「净值滞后」这一项，别和境内 ETF 直接横向比。<br>
     · <b>K线不复权</b>（fqt=0）：ETF 分红不频繁，但看溢价必须和真实成交价对齐，不能用前复权价。<br>
-    · <b>资金流</b>是东财按成交单大小拆的主力/超大单/大单/中单/小单净额，ETF 的「主力」含义比个股弱，看趋势别看绝对值。<br>
-    · 数据来自东方财富，延时节点（push2delay）约 15 分钟级；交易时段自动刷新间隔 20 秒。
+    · <b>资金流</b>是东财按成交单大小拆的主力/超大单/大单/中单/小单净额，ETF 的「主力」含义比个股弱，看趋势别看绝对值。
+      <b>目前只能拿到最新一天</b>（历史接口 push2his 在境外机房被掐，只剩延时节点当日的 fflow），
+      所以「近 5/10/20/60 日」在样本不足时显示 —，不拿当日值去凑。<br>
+    · <b>数据源（2026-09-25 晚定稿）</b>：行情走腾讯（约 0.2s，失败才回退东财）；
+      K线走腾讯（不复权，日/周/月带成交额，<b>分钟线没有成交额</b>，那格显示 —）；
+      净值/概况走东财（净值有磁盘缓存，第二次起几乎秒开）；ETF 列表走新浪。
+      东财的 stock/get、clist、push2his 在本机房已不可用（502 / 连接被掐）。<br>
+    · 交易时段自动刷新间隔 20 秒。
   </div>
 </div>
 
@@ -638,8 +647,18 @@ function renderFlow() {
   const t = $('flow');
   if (!flow.length) { t.innerHTML = '<tr><td>暂无数据</td></tr>'; return; }
   const sum = (k) => flow.slice(-k).reduce((s, x) => s + (x.main || 0), 0);
-  const items = [['今日', flow.length ? flow[flow.length - 1].main : null], ['近 5 日', sum(5)], ['近 10 日', sum(10)], ['近 20 日', sum(20)], ['近 60 日', sum(60)]];
-  t.innerHTML = items.map(([k, v]) => `<tr><td>${k}主力净额</td><td class="${cls(v)}">${nfk(v)}元</td></tr>`).join('');
+  // 资金流数据源现在只给最新 1 天（东财 push2his 被掐，只剩 push2delay 的当日 fflow）。
+  // 样本不够时不能拿当日值去充「近 60 日累计」—— 那是假数字，宁可显示 —。
+  const has = (k) => flow.length >= k;
+  // 只列算得出来的项：样本不够就别摆一排「—」占地方，改成一行说明讲清楚为什么没有
+  const items = [['今日', flow.length ? flow[flow.length - 1].main : null]];
+  for (const k of [5, 10, 20, 60]) if (has(k)) items.push([`近 ${k} 日`, sum(k)]);
+  const note = flow.length < 2
+    ? '<tr><td colspan="2" class="hint">上游延时节点只给当日资金流，<br>历史累计暂时拿不到，不做估算</td></tr>'
+    : '';
+  t.innerHTML =
+    items.map(([k, v]) => `<tr><td>${k}主力净额</td><td class="${cls(v)}">${nfk(v)}元</td></tr>`).join('') +
+    note;
 
   const ch = S.charts.flow || (S.charts.flow = echarts.init($('flowChart')));
   const xs = flow.slice(-60).map((f) => f.t);
@@ -672,6 +691,26 @@ function renderInfo() {
 /* ============ 取数 ============ */
 function setStat(s) { $('stat').textContent = s || ''; }
 
+/* 2026-09-26 修：状态栏以前写的是「更新于 <现在几点>」——那只是「这一刻去问了一次服务器」，
+   跟行情本身是哪天的毫无关系。结果中秋休市（A 股最后收盘是 9/24）的时候，页面顶上写着
+   「更新于 15:33:04」看着像刚刷出来的实时数据，底下价格其实是两天前的。
+   这种错觉很要命：<｜hy_place▁holder▁no▁813｜>る ETF 的溢价率、K 线、信号，全都是旧数据算出来的。
+
+   改成显示行情自己的时间戳，并且在旧到不正常的程度时明确写出来。
+   阈值取 72 小时：正常的周末跨度（周五 15:00 收 → 周一 9:30 开）约 66.5 小时，
+   刚好不会被误报；而国庆、春节这种长假一定会亮起来。 */
+function stampStat() {
+  const q = S.snap && S.snap.quote;
+  if (!q || !q.ts) { setStat(''); return; }
+  const ts = new Date(q.ts * 1000);
+  const md = ts.toLocaleString('zh-CN', {
+    hour12: false, month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit',
+  });
+  const hours = (Date.now() - q.ts * 1000) / 3.6e6;
+  const lag = hours > 72 ? ` · 滞后 ${Math.floor(hours / 24)} 天` : '';
+  setStat('行情 ' + md + lag + (q.src ? ` · ${q.src}` : ''));
+}
+
 async function loadAll() {
   $('err').innerHTML = '';
   setStat('加载中…');
@@ -681,7 +720,7 @@ async function loadAll() {
     S.kl = snap.kline;
     renderHero(); renderPremium(); renderPerf(); renderFlow(); renderInfo();
     await loadKline();
-    setStat('更新于 ' + new Date().toLocaleTimeString('zh-CN', { hour12: false }));
+    stampStat();
   } catch (e) {
     $('err').innerHTML = `<div class="err">${esc(e.message || e)}</div>`;
     setStat('');
@@ -709,7 +748,7 @@ async function refreshQuote() {
       const nav = S.snap.premium && S.snap.premium.nav;
       if (nav) S.snap.premium.premium = ((j.quote.price - nav) / nav) * 100;
       renderHero(); renderPremium();
-      setStat('更新于 ' + new Date().toLocaleTimeString('zh-CN', { hour12: false }));
+      stampStat();
     }
   } catch (e) { /* 静默：自动刷新失败不打扰 */ }
 }

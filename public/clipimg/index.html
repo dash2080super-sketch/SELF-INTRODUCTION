@@ -274,6 +274,8 @@
       return f && f.type && f.type.indexOf('image/') === 0;
     });
     if (!imgs.length) { toast('剪贴板/拖入的内容里没有图片'); return; }
+    var okCount = 0;
+    var failCount = 0;
     for (var i = 0; i < imgs.length; i++) {
       var f = imgs[i];
       toast('收藏中 ' + (i + 1) + '/' + imgs.length + ' …');
@@ -284,16 +286,20 @@
           headers: { 'Content-Type': f.type || 'application/octet-stream' },
           body: p.blob,
         });
-        if (r.status === 401) { toast('请先登录小破站'); return; }
-        if (!r.ok) { toast('上传失败（' + r.status + '）'); continue; }
+        if (r.status === 401) { toast('请先登录小破站（会话过期请重新登录）'); return; }
+        if (!r.ok) { failCount++; toast('上传失败（' + r.status + '）'); continue; }
         var entry = await r.json();
         items.unshift(entry);
+        okCount++;
         render();
       } catch (e) {
+        failCount++;
         toast('上传失败：网络异常');
       }
     }
-    toast('收藏完成 ✔');
+    if (okCount && failCount) toast('收藏 ' + okCount + ' 张成功，' + failCount + ' 张失败');
+    else if (okCount) toast('收藏完成 ' + okCount + ' 张 ✔');
+    else toast('一张都没存进去（' + failCount + ' 张失败），刷新页面再试');
   }
 
   /* ---------- 三种入口：粘贴 / 拖拽 / 选文件 ---------- */

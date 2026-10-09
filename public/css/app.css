@@ -529,3 +529,697 @@ main:has(> .panel[data-id="life"].active){max-width:1400px}
 /* Global Radar：iframe 需要宽一点的舞台（和 life 同理） billboard-embed-fill */
 main:has(> .panel[data-id="globalradar"].active){max-width:1600px}
 
+
+
+/* ============ ndxspx · NASDAQ & S&P 加仓决策 ============
+   配色沿用站点口径：--up 红（可投 / 涨）、--down 绿（停手 / 跌）、--warn 黄（警戒）。
+   所有类名前缀 nspx-，不与其它模块冲突。
+*/
+
+/* ---- 决策卡（红绿灯） ---- */
+.nspx-verdict{display:flex; align-items:center; gap:18px; flex-wrap:wrap;
+  background:var(--surface); border:1px solid var(--line); border-left:4px solid var(--line);
+  border-radius:var(--radius); box-shadow:var(--shadow); padding:16px 18px; margin-bottom:14px}
+.nspx-verdict.up{border-left-color:var(--up)}
+.nspx-verdict.down{border-left-color:var(--down)}
+.nspx-verdict.warn{border-left-color:var(--warn)}
+.nspx-vleft{flex:1; min-width:280px}
+.nspx-vlabel{font-size:12px; color:var(--muted)}
+.nspx-vaction{font-size:22px; font-weight:650; margin:2px 0 6px; letter-spacing:.01em}
+.nspx-verdict.up .nspx-vaction{color:var(--up)}
+.nspx-verdict.down .nspx-vaction{color:var(--down)}
+.nspx-verdict.warn .nspx-vaction{color:var(--warn)}
+.nspx-vsub{font-size:12.5px; color:var(--ink-2); line-height:1.7}
+.nspx-vright{text-align:right; flex:none; min-width:150px}
+.nspx-vsize{font-size:30px; font-weight:650; font-variant-numeric:tabular-nums; line-height:1.15}
+.nspx-vsize span{font-size:12px; font-weight:400; color:var(--muted); margin-left:4px}
+.nspx-vhint{font-size:11.5px; color:var(--muted); margin-top:2px}
+
+/* ---- 告警条 ---- */
+.nspx-alert{background:#fff8e6; border:1px solid #f0dfae; color:#8a6412;
+  border-radius:10px; padding:9px 12px; font-size:12.5px; margin-bottom:10px; line-height:1.65}
+.nspx-alert.warn{background:#fff8e6; border-color:#f0dfae; color:#8a6412}
+.nspx-alert.down{background:#fdecec; border-color:#f4c9c9; color:#9e2b2b}
+.nspx-alert.info{background:var(--accent-soft); border-color:#d3e2fd; color:#24457f}
+
+/* ---- 通用块 ---- */
+.nspx-sec{margin-bottom:20px}
+.nspx-sec h3{font-size:14px; font-weight:650; margin:0 0 8px}
+.nspx-hint{font-size:12px; color:var(--muted); margin-bottom:8px; line-height:1.7}
+.nspx-hint b{color:var(--ink-2)}
+.nspx-hint2{font-size:12px; color:var(--muted); margin-top:8px}
+.nspx-hint2 b{color:var(--ink-2)}
+.nspx-dim{font-style:normal; color:var(--muted); font-size:11.5px}
+
+/* ---- 两条腿 ---- */
+.nspx-legs{display:grid; grid-template-columns:repeat(auto-fit,minmax(320px,1fr)); gap:12px}
+.nspx-leg{background:var(--surface); border:1px solid var(--line); border-radius:var(--radius);
+  padding:14px 16px; box-shadow:var(--shadow); border-top:3px solid var(--line)}
+.nspx-leg.up{border-top-color:var(--up)}
+.nspx-leg.warn{border-top-color:var(--warn)}
+.nspx-leg.down{border-top-color:var(--down)}
+.nspx-leghead{display:flex; align-items:baseline; gap:10px; margin-bottom:6px}
+.nspx-legname{font-size:15px; font-weight:650; flex:1}
+.nspx-legamt{font-size:24px; font-weight:650; font-variant-numeric:tabular-nums}
+.nspx-legamt span{font-size:12px; font-weight:400; color:var(--muted); margin-left:3px}
+.nspx-badge{font-size:11px; font-weight:400; padding:1px 7px; border-radius:999px; margin-left:8px;
+  background:var(--line-2); color:var(--muted)}
+.nspx-badge.ok{background:#fdecec; color:var(--up)}
+.nspx-badge.no{background:#e7f5ed; color:var(--down)}
+.nspx-badge.warn{background:#fff8e6; color:var(--warn)}
+.nspx-legreason{font-size:12.5px; color:var(--ink-2); line-height:1.7; margin-bottom:8px}
+.nspx-legsplit{font-size:12px; color:#8a6412; background:#fff8e6; border:1px solid #f0dfae;
+  border-radius:8px; padding:5px 9px; margin-bottom:8px}
+.nspx-leggrid{display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin:8px 0}
+.nspx-legfoot{font-size:11.5px; color:var(--muted); line-height:1.7;
+  border-top:1px solid var(--line-2); padding-top:8px; margin-top:8px}
+
+/* ---- 单元格 ---- */
+.nspx-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(140px,1fr)); gap:10px}
+.nspx-cell{background:var(--surface); border:1px solid var(--line); border-radius:10px; padding:10px 12px}
+.nspx-cell .k{font-size:11.5px; color:var(--muted)}
+.nspx-cell .v{font-size:16px; font-weight:650; font-variant-numeric:tabular-nums; margin-top:3px}
+.nspx-cell .v.up{color:var(--up)}
+.nspx-cell .v.down{color:var(--down)}
+.nspx-cell .v.warn{color:var(--warn)}
+.nspx-cell .v.flat{color:var(--ink)}
+
+/* ---- ERP 坐标轴 ---- */
+.nspx-axis{margin:6px 0 14px}
+.nspx-axisbar{position:relative; height:64px; background:var(--surface-2);
+  border:1px solid var(--line); border-radius:10px; overflow:visible}
+.nspx-zone{position:absolute; top:0; bottom:0; opacity:.5}
+.nspx-zone.z0{background:#eceff3}
+.nspx-zone.z1{background:#fdf0d5}
+.nspx-zone.z2{background:#fbdcdc}
+.nspx-zone.z3{background:#f6c3c3}
+.nspx-mark{position:absolute; top:0; bottom:0; width:0; border-left:1px dashed #9aa3af}
+.nspx-mark span{position:absolute; top:2px; left:4px; font-size:10.5px; color:var(--ink-2);
+  white-space:nowrap; font-variant-numeric:tabular-nums}
+.nspx-needle{position:absolute; top:0; bottom:0; display:flex; flex-direction:column;
+  justify-content:center; align-items:center; transform:translateX(-50%); pointer-events:none}
+.nspx-needle:before{content:''; position:absolute; top:-1px; bottom:-1px; width:2px}
+.nspx-needle.a:before{background:var(--up)}
+.nspx-needle.b:before{background:var(--accent)}
+.nspx-needle b{font-size:10.5px; background:#fff; padding:1px 4px; border-radius:4px; line-height:1.4}
+.nspx-needle.a b{color:var(--up)}
+.nspx-needle.b b{color:var(--accent)}
+.nspx-needle span{font-size:10.5px; background:#fff; padding:0 3px; color:var(--ink-2);
+  font-variant-numeric:tabular-nums}
+.nspx-axisscale{display:flex; justify-content:space-between; font-size:10.5px; color:var(--muted); margin-top:4px}
+
+/* ---- 距离表 ---- */
+.nspx-dist{display:grid; gap:10px}
+.nspx-distrow{background:var(--surface); border:1px solid var(--line); border-radius:10px; padding:10px 12px}
+.nspx-distname{font-size:12.5px; font-weight:650; margin-bottom:6px}
+.nspx-distcells{display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:8px}
+.nspx-dcell .k{font-size:11px; color:var(--muted)}
+.nspx-dcell .v{font-size:14px; font-weight:650; font-variant-numeric:tabular-nums; margin-top:2px}
+.nspx-dcell .v.up{color:var(--up)}
+.nspx-dcell .v.flat{color:var(--ink)}
+
+/* ---- 曲线 ---- */
+.nspx-spark{width:100%; height:110px; display:block; background:var(--surface);
+  border:1px solid var(--line); border-radius:10px}
+.nspx-curves{display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:12px}
+.nspx-curveblk{background:var(--surface); border:1px solid var(--line); border-radius:10px; padding:10px 12px}
+.nspx-curvetitle{font-size:12.5px; font-weight:650; margin-bottom:6px; display:flex; justify-content:space-between}
+.nspx-curvetitle span{font-weight:400; color:var(--muted); font-size:11.5px; font-variant-numeric:tabular-nums}
+.nspx-legend{display:flex; gap:14px; margin-top:6px}
+.nspx-li{font-size:11.5px; color:var(--ink-2); display:flex; align-items:center; gap:5px}
+.nspx-li:before{content:''; width:10px; height:2px; background:var(--c, var(--accent)); border-radius:2px}
+
+/* ---- 表格 ---- */
+.nspx-twrap{overflow-x:auto; border:1px solid var(--line); border-radius:var(--radius); background:var(--surface)}
+.nspx-table{width:100%; border-collapse:collapse; font-size:12.5px; font-variant-numeric:tabular-nums}
+.nspx-table th,.nspx-table td{padding:7px 10px; border-bottom:1px solid var(--line-2); text-align:left; white-space:nowrap}
+.nspx-table thead th{background:var(--surface-2); color:var(--ink-2); font-weight:600}
+.nspx-table tbody tr:last-child td{border-bottom:none}
+.nspx-table td.up{color:var(--up)}
+.nspx-table td.down{color:var(--down)}
+.nspx-table td.warn{color:var(--warn)}
+
+/* ---- 熔断 ---- */
+.nspx-cb{display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:10px}
+.nspx-cbitem{background:var(--surface); border:1px solid var(--line); border-left:3px solid var(--line);
+  border-radius:10px; padding:10px 12px}
+.nspx-cbitem.triggered{border-left-color:var(--down)}
+.nspx-cbitem.warn{border-left-color:var(--warn)}
+.nspx-cbitem.disabled{border-left-color:#d5d9de; opacity:.72}
+.nspx-cbitem.ok{border-left-color:var(--up)}
+.nspx-cbtop{display:flex; align-items:center; gap:8px; margin-bottom:3px}
+.nspx-cbtop b{font-size:12.5px}
+.nspx-cbname{font-size:12px; color:var(--ink)}
+.nspx-cbnote{font-size:11.5px; color:var(--muted); margin-top:3px; line-height:1.6}
+
+/* ---- 刷新提示 / 页脚 / 说明 ---- */
+.nspx-refresh-tip{background:var(--accent-soft); border:1px solid #d3e2fd; color:#24457f;
+  border-radius:10px; padding:8px 12px; font-size:12.5px; margin-bottom:12px}
+.nspx-foot{margin:4px 0 18px; font-size:12px; color:var(--muted); line-height:1.8}
+.nspx-note{margin-top:22px; background:var(--surface); border:1px solid var(--line);
+  border-radius:var(--radius); padding:14px 16px; font-size:12.5px; color:var(--ink-2); line-height:1.75}
+.nspx-note>b:first-child{color:var(--ink)}
+.nspx-note ul{margin:6px 0 0; padding-left:18px}
+.nspx-note li{margin:5px 0}
+.nspx-note code{background:var(--line-2); padding:1px 5px; border-radius:4px; font-size:11.5px}
+
+@media (max-width:640px){
+  .nspx-vright{text-align:left}
+  .nspx-leggrid{grid-template-columns:repeat(2,1fr)}
+  .nspx-grid{grid-template-columns:repeat(auto-fill,minmax(112px,1fr))}
+}
+
+
+/* ============ ndxspx · NASDAQ & S&P 加仓决策 ============
+   配色沿用站点口径：--up 红（可投 / 涨）、--down 绿（停手 / 跌）、--warn 黄（警戒）。
+   所有类名前缀 nspx-，不与其它模块冲突。
+*/
+
+/* ---- 决策卡（红绿灯） ---- */
+.nspx-verdict{display:flex; align-items:center; gap:18px; flex-wrap:wrap;
+  background:var(--surface); border:1px solid var(--line); border-left:4px solid var(--line);
+  border-radius:var(--radius); box-shadow:var(--shadow); padding:16px 18px; margin-bottom:14px}
+.nspx-verdict.up{border-left-color:var(--up)}
+.nspx-verdict.down{border-left-color:var(--down)}
+.nspx-verdict.warn{border-left-color:var(--warn)}
+.nspx-vleft{flex:1; min-width:280px}
+.nspx-vlabel{font-size:12px; color:var(--muted)}
+.nspx-vaction{font-size:22px; font-weight:650; margin:2px 0 6px; letter-spacing:.01em}
+.nspx-verdict.up .nspx-vaction{color:var(--up)}
+.nspx-verdict.down .nspx-vaction{color:var(--down)}
+.nspx-verdict.warn .nspx-vaction{color:var(--warn)}
+.nspx-vsub{font-size:12.5px; color:var(--ink-2); line-height:1.7}
+.nspx-vright{text-align:right; flex:none; min-width:150px}
+.nspx-vsize{font-size:30px; font-weight:650; font-variant-numeric:tabular-nums; line-height:1.15}
+.nspx-vsize span{font-size:12px; font-weight:400; color:var(--muted); margin-left:4px}
+.nspx-vhint{font-size:11.5px; color:var(--muted); margin-top:2px}
+
+/* ---- 告警条 ---- */
+.nspx-alert{background:#fff8e6; border:1px solid #f0dfae; color:#8a6412;
+  border-radius:10px; padding:9px 12px; font-size:12.5px; margin-bottom:10px; line-height:1.65}
+.nspx-alert.warn{background:#fff8e6; border-color:#f0dfae; color:#8a6412}
+.nspx-alert.down{background:#fdecec; border-color:#f4c9c9; color:#9e2b2b}
+.nspx-alert.info{background:var(--accent-soft); border-color:#d3e2fd; color:#24457f}
+
+/* ---- 通用块 ---- */
+.nspx-sec{margin-bottom:20px}
+.nspx-sec h3{font-size:14px; font-weight:650; margin:0 0 8px}
+.nspx-hint{font-size:12px; color:var(--muted); margin-bottom:8px; line-height:1.7}
+.nspx-hint b{color:var(--ink-2)}
+.nspx-hint2{font-size:12px; color:var(--muted); margin-top:8px}
+.nspx-hint2 b{color:var(--ink-2)}
+.nspx-dim{font-style:normal; color:var(--muted); font-size:11.5px}
+
+/* ---- 两条腿 ---- */
+.nspx-legs{display:grid; grid-template-columns:repeat(auto-fit,minmax(320px,1fr)); gap:12px}
+.nspx-leg{background:var(--surface); border:1px solid var(--line); border-radius:var(--radius);
+  padding:14px 16px; box-shadow:var(--shadow); border-top:3px solid var(--line)}
+.nspx-leg.up{border-top-color:var(--up)}
+.nspx-leg.warn{border-top-color:var(--warn)}
+.nspx-leg.down{border-top-color:var(--down)}
+.nspx-leghead{display:flex; align-items:baseline; gap:10px; margin-bottom:6px}
+.nspx-legname{font-size:15px; font-weight:650; flex:1}
+.nspx-legamt{font-size:24px; font-weight:650; font-variant-numeric:tabular-nums}
+.nspx-legamt span{font-size:12px; font-weight:400; color:var(--muted); margin-left:3px}
+.nspx-badge{font-size:11px; font-weight:400; padding:1px 7px; border-radius:999px; margin-left:8px;
+  background:var(--line-2); color:var(--muted)}
+.nspx-badge.ok{background:#fdecec; color:var(--up)}
+.nspx-badge.no{background:#e7f5ed; color:var(--down)}
+.nspx-badge.warn{background:#fff8e6; color:var(--warn)}
+.nspx-legreason{font-size:12.5px; color:var(--ink-2); line-height:1.7; margin-bottom:8px}
+.nspx-legsplit{font-size:12px; color:#8a6412; background:#fff8e6; border:1px solid #f0dfae;
+  border-radius:8px; padding:5px 9px; margin-bottom:8px}
+.nspx-leggrid{display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin:8px 0}
+.nspx-legfoot{font-size:11.5px; color:var(--muted); line-height:1.7;
+  border-top:1px solid var(--line-2); padding-top:8px; margin-top:8px}
+
+/* ---- 单元格 ---- */
+.nspx-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(140px,1fr)); gap:10px}
+.nspx-cell{background:var(--surface); border:1px solid var(--line); border-radius:10px; padding:10px 12px}
+.nspx-cell .k{font-size:11.5px; color:var(--muted)}
+.nspx-cell .v{font-size:16px; font-weight:650; font-variant-numeric:tabular-nums; margin-top:3px}
+.nspx-cell .v.up{color:var(--up)}
+.nspx-cell .v.down{color:var(--down)}
+.nspx-cell .v.warn{color:var(--warn)}
+.nspx-cell .v.flat{color:var(--ink)}
+
+/* ---- ERP 坐标轴 ---- */
+.nspx-axis{margin:6px 0 14px}
+.nspx-axisbar{position:relative; height:64px; background:var(--surface-2);
+  border:1px solid var(--line); border-radius:10px; overflow:visible}
+.nspx-zone{position:absolute; top:0; bottom:0; opacity:.5}
+.nspx-zone.z0{background:#eceff3}
+.nspx-zone.z1{background:#fdf0d5}
+.nspx-zone.z2{background:#fbdcdc}
+.nspx-zone.z3{background:#f6c3c3}
+.nspx-mark{position:absolute; top:0; bottom:0; width:0; border-left:1px dashed #9aa3af}
+.nspx-mark span{position:absolute; top:2px; left:4px; font-size:10.5px; color:var(--ink-2);
+  white-space:nowrap; font-variant-numeric:tabular-nums}
+.nspx-needle{position:absolute; top:0; bottom:0; display:flex; flex-direction:column;
+  justify-content:center; align-items:center; transform:translateX(-50%); pointer-events:none}
+.nspx-needle:before{content:''; position:absolute; top:-1px; bottom:-1px; width:2px}
+.nspx-needle.a:before{background:var(--up)}
+.nspx-needle.b:before{background:var(--accent)}
+.nspx-needle b{font-size:10.5px; background:#fff; padding:1px 4px; border-radius:4px; line-height:1.4}
+.nspx-needle.a b{color:var(--up)}
+.nspx-needle.b b{color:var(--accent)}
+.nspx-needle span{font-size:10.5px; background:#fff; padding:0 3px; color:var(--ink-2);
+  font-variant-numeric:tabular-nums}
+.nspx-axisscale{display:flex; justify-content:space-between; font-size:10.5px; color:var(--muted); margin-top:4px}
+
+/* ---- 距离表 ---- */
+.nspx-dist{display:grid; gap:10px}
+.nspx-distrow{background:var(--surface); border:1px solid var(--line); border-radius:10px; padding:10px 12px}
+.nspx-distname{font-size:12.5px; font-weight:650; margin-bottom:6px}
+.nspx-distcells{display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:8px}
+.nspx-dcell .k{font-size:11px; color:var(--muted)}
+.nspx-dcell .v{font-size:14px; font-weight:650; font-variant-numeric:tabular-nums; margin-top:2px}
+.nspx-dcell .v.up{color:var(--up)}
+.nspx-dcell .v.flat{color:var(--ink)}
+
+/* ---- 曲线 ---- */
+.nspx-spark{width:100%; height:110px; display:block; background:var(--surface);
+  border:1px solid var(--line); border-radius:10px}
+.nspx-curves{display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:12px}
+.nspx-curveblk{background:var(--surface); border:1px solid var(--line); border-radius:10px; padding:10px 12px}
+.nspx-curvetitle{font-size:12.5px; font-weight:650; margin-bottom:6px; display:flex; justify-content:space-between}
+.nspx-curvetitle span{font-weight:400; color:var(--muted); font-size:11.5px; font-variant-numeric:tabular-nums}
+.nspx-legend{display:flex; gap:14px; margin-top:6px}
+.nspx-li{font-size:11.5px; color:var(--ink-2); display:flex; align-items:center; gap:5px}
+.nspx-li:before{content:''; width:10px; height:2px; background:var(--c, var(--accent)); border-radius:2px}
+
+/* ---- 表格 ---- */
+.nspx-twrap{overflow-x:auto; border:1px solid var(--line); border-radius:var(--radius); background:var(--surface)}
+.nspx-table{width:100%; border-collapse:collapse; font-size:12.5px; font-variant-numeric:tabular-nums}
+.nspx-table th,.nspx-table td{padding:7px 10px; border-bottom:1px solid var(--line-2); text-align:left; white-space:nowrap}
+.nspx-table thead th{background:var(--surface-2); color:var(--ink-2); font-weight:600}
+.nspx-table tbody tr:last-child td{border-bottom:none}
+.nspx-table td.up{color:var(--up)}
+.nspx-table td.down{color:var(--down)}
+.nspx-table td.warn{color:var(--warn)}
+
+/* ---- 熔断 ---- */
+.nspx-cb{display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:10px}
+.nspx-cbitem{background:var(--surface); border:1px solid var(--line); border-left:3px solid var(--line);
+  border-radius:10px; padding:10px 12px}
+.nspx-cbitem.triggered{border-left-color:var(--down)}
+.nspx-cbitem.warn{border-left-color:var(--warn)}
+.nspx-cbitem.disabled{border-left-color:#d5d9de; opacity:.72}
+.nspx-cbitem.ok{border-left-color:var(--up)}
+.nspx-cbtop{display:flex; align-items:center; gap:8px; margin-bottom:3px}
+.nspx-cbtop b{font-size:12.5px}
+.nspx-cbname{font-size:12px; color:var(--ink)}
+.nspx-cbnote{font-size:11.5px; color:var(--muted); margin-top:3px; line-height:1.6}
+
+/* ---- 刷新提示 / 页脚 / 说明 ---- */
+.nspx-refresh-tip{background:var(--accent-soft); border:1px solid #d3e2fd; color:#24457f;
+  border-radius:10px; padding:8px 12px; font-size:12.5px; margin-bottom:12px}
+.nspx-foot{margin:4px 0 18px; font-size:12px; color:var(--muted); line-height:1.8}
+.nspx-note{margin-top:22px; background:var(--surface); border:1px solid var(--line);
+  border-radius:var(--radius); padding:14px 16px; font-size:12.5px; color:var(--ink-2); line-height:1.75}
+.nspx-note>b:first-child{color:var(--ink)}
+.nspx-note ul{margin:6px 0 0; padding-left:18px}
+.nspx-note li{margin:5px 0}
+.nspx-note code{background:var(--line-2); padding:1px 5px; border-radius:4px; font-size:11.5px}
+
+@media (max-width:640px){
+  .nspx-vright{text-align:left}
+  .nspx-leggrid{grid-template-columns:repeat(2,1fr)}
+  .nspx-grid{grid-template-columns:repeat(auto-fill,minmax(112px,1fr))}
+}
+
+
+/* ============ ndxspx · NASDAQ & S&P 加仓决策 ============
+   配色沿用站点口径：--up 红（可投 / 涨）、--down 绿（停手 / 跌）、--warn 黄（警戒）。
+   所有类名前缀 nspx-，不与其它模块冲突。
+*/
+
+/* ---- 决策卡（红绿灯） ---- */
+.nspx-verdict{display:flex; align-items:center; gap:18px; flex-wrap:wrap;
+  background:var(--surface); border:1px solid var(--line); border-left:4px solid var(--line);
+  border-radius:var(--radius); box-shadow:var(--shadow); padding:16px 18px; margin-bottom:14px}
+.nspx-verdict.up{border-left-color:var(--up)}
+.nspx-verdict.down{border-left-color:var(--down)}
+.nspx-verdict.warn{border-left-color:var(--warn)}
+.nspx-vleft{flex:1; min-width:280px}
+.nspx-vlabel{font-size:12px; color:var(--muted)}
+.nspx-vaction{font-size:22px; font-weight:650; margin:2px 0 6px; letter-spacing:.01em}
+.nspx-verdict.up .nspx-vaction{color:var(--up)}
+.nspx-verdict.down .nspx-vaction{color:var(--down)}
+.nspx-verdict.warn .nspx-vaction{color:var(--warn)}
+.nspx-vsub{font-size:12.5px; color:var(--ink-2); line-height:1.7}
+.nspx-vright{text-align:right; flex:none; min-width:150px}
+.nspx-vsize{font-size:30px; font-weight:650; font-variant-numeric:tabular-nums; line-height:1.15}
+.nspx-vsize span{font-size:12px; font-weight:400; color:var(--muted); margin-left:4px}
+.nspx-vhint{font-size:11.5px; color:var(--muted); margin-top:2px}
+
+/* ---- 告警条 ---- */
+.nspx-alert{background:#fff8e6; border:1px solid #f0dfae; color:#8a6412;
+  border-radius:10px; padding:9px 12px; font-size:12.5px; margin-bottom:10px; line-height:1.65}
+.nspx-alert.warn{background:#fff8e6; border-color:#f0dfae; color:#8a6412}
+.nspx-alert.down{background:#fdecec; border-color:#f4c9c9; color:#9e2b2b}
+.nspx-alert.info{background:var(--accent-soft); border-color:#d3e2fd; color:#24457f}
+
+/* ---- 通用块 ---- */
+.nspx-sec{margin-bottom:20px}
+.nspx-sec h3{font-size:14px; font-weight:650; margin:0 0 8px}
+.nspx-hint{font-size:12px; color:var(--muted); margin-bottom:8px; line-height:1.7}
+.nspx-hint b{color:var(--ink-2)}
+.nspx-hint2{font-size:12px; color:var(--muted); margin-top:8px}
+.nspx-hint2 b{color:var(--ink-2)}
+.nspx-dim{font-style:normal; color:var(--muted); font-size:11.5px}
+
+/* ---- 两条腿 ---- */
+.nspx-legs{display:grid; grid-template-columns:repeat(auto-fit,minmax(320px,1fr)); gap:12px}
+.nspx-leg{background:var(--surface); border:1px solid var(--line); border-radius:var(--radius);
+  padding:14px 16px; box-shadow:var(--shadow); border-top:3px solid var(--line)}
+.nspx-leg.up{border-top-color:var(--up)}
+.nspx-leg.warn{border-top-color:var(--warn)}
+.nspx-leg.down{border-top-color:var(--down)}
+.nspx-leghead{display:flex; align-items:baseline; gap:10px; margin-bottom:6px}
+.nspx-legname{font-size:15px; font-weight:650; flex:1}
+.nspx-legamt{font-size:24px; font-weight:650; font-variant-numeric:tabular-nums}
+.nspx-legamt span{font-size:12px; font-weight:400; color:var(--muted); margin-left:3px}
+.nspx-badge{font-size:11px; font-weight:400; padding:1px 7px; border-radius:999px; margin-left:8px;
+  background:var(--line-2); color:var(--muted)}
+.nspx-badge.ok{background:#fdecec; color:var(--up)}
+.nspx-badge.no{background:#e7f5ed; color:var(--down)}
+.nspx-badge.warn{background:#fff8e6; color:var(--warn)}
+.nspx-legreason{font-size:12.5px; color:var(--ink-2); line-height:1.7; margin-bottom:8px}
+.nspx-legsplit{font-size:12px; color:#8a6412; background:#fff8e6; border:1px solid #f0dfae;
+  border-radius:8px; padding:5px 9px; margin-bottom:8px}
+.nspx-leggrid{display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin:8px 0}
+.nspx-legfoot{font-size:11.5px; color:var(--muted); line-height:1.7;
+  border-top:1px solid var(--line-2); padding-top:8px; margin-top:8px}
+
+/* ---- 单元格 ---- */
+.nspx-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(140px,1fr)); gap:10px}
+.nspx-cell{background:var(--surface); border:1px solid var(--line); border-radius:10px; padding:10px 12px}
+.nspx-cell .k{font-size:11.5px; color:var(--muted)}
+.nspx-cell .v{font-size:16px; font-weight:650; font-variant-numeric:tabular-nums; margin-top:3px}
+.nspx-cell .v.up{color:var(--up)}
+.nspx-cell .v.down{color:var(--down)}
+.nspx-cell .v.warn{color:var(--warn)}
+.nspx-cell .v.flat{color:var(--ink)}
+
+/* ---- ERP 坐标轴 ---- */
+.nspx-axis{margin:6px 0 14px}
+.nspx-axisbar{position:relative; height:64px; background:var(--surface-2);
+  border:1px solid var(--line); border-radius:10px; overflow:visible}
+.nspx-zone{position:absolute; top:0; bottom:0; opacity:.5}
+.nspx-zone.z0{background:#eceff3}
+.nspx-zone.z1{background:#fdf0d5}
+.nspx-zone.z2{background:#fbdcdc}
+.nspx-zone.z3{background:#f6c3c3}
+.nspx-mark{position:absolute; top:0; bottom:0; width:0; border-left:1px dashed #9aa3af}
+.nspx-mark span{position:absolute; top:2px; left:4px; font-size:10.5px; color:var(--ink-2);
+  white-space:nowrap; font-variant-numeric:tabular-nums}
+.nspx-needle{position:absolute; top:0; bottom:0; display:flex; flex-direction:column;
+  justify-content:center; align-items:center; transform:translateX(-50%); pointer-events:none}
+.nspx-needle:before{content:''; position:absolute; top:-1px; bottom:-1px; width:2px}
+.nspx-needle.a:before{background:var(--up)}
+.nspx-needle.b:before{background:var(--accent)}
+.nspx-needle b{font-size:10.5px; background:#fff; padding:1px 4px; border-radius:4px; line-height:1.4}
+.nspx-needle.a b{color:var(--up)}
+.nspx-needle.b b{color:var(--accent)}
+.nspx-needle span{font-size:10.5px; background:#fff; padding:0 3px; color:var(--ink-2);
+  font-variant-numeric:tabular-nums}
+.nspx-axisscale{display:flex; justify-content:space-between; font-size:10.5px; color:var(--muted); margin-top:4px}
+
+/* ---- 距离表 ---- */
+.nspx-dist{display:grid; gap:10px}
+.nspx-distrow{background:var(--surface); border:1px solid var(--line); border-radius:10px; padding:10px 12px}
+.nspx-distname{font-size:12.5px; font-weight:650; margin-bottom:6px}
+.nspx-distcells{display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:8px}
+.nspx-dcell .k{font-size:11px; color:var(--muted)}
+.nspx-dcell .v{font-size:14px; font-weight:650; font-variant-numeric:tabular-nums; margin-top:2px}
+.nspx-dcell .v.up{color:var(--up)}
+.nspx-dcell .v.flat{color:var(--ink)}
+
+/* ---- 曲线 ---- */
+.nspx-spark{width:100%; height:110px; display:block; background:var(--surface);
+  border:1px solid var(--line); border-radius:10px}
+.nspx-curves{display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:12px}
+.nspx-curveblk{background:var(--surface); border:1px solid var(--line); border-radius:10px; padding:10px 12px}
+.nspx-curvetitle{font-size:12.5px; font-weight:650; margin-bottom:6px; display:flex; justify-content:space-between}
+.nspx-curvetitle span{font-weight:400; color:var(--muted); font-size:11.5px; font-variant-numeric:tabular-nums}
+.nspx-legend{display:flex; gap:14px; margin-top:6px}
+.nspx-li{font-size:11.5px; color:var(--ink-2); display:flex; align-items:center; gap:5px}
+.nspx-li:before{content:''; width:10px; height:2px; background:var(--c, var(--accent)); border-radius:2px}
+
+/* ---- 表格 ---- */
+.nspx-twrap{overflow-x:auto; border:1px solid var(--line); border-radius:var(--radius); background:var(--surface)}
+.nspx-table{width:100%; border-collapse:collapse; font-size:12.5px; font-variant-numeric:tabular-nums}
+.nspx-table th,.nspx-table td{padding:7px 10px; border-bottom:1px solid var(--line-2); text-align:left; white-space:nowrap}
+.nspx-table thead th{background:var(--surface-2); color:var(--ink-2); font-weight:600}
+.nspx-table tbody tr:last-child td{border-bottom:none}
+.nspx-table td.up{color:var(--up)}
+.nspx-table td.down{color:var(--down)}
+.nspx-table td.warn{color:var(--warn)}
+
+/* ---- 熔断 ---- */
+.nspx-cb{display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:10px}
+.nspx-cbitem{background:var(--surface); border:1px solid var(--line); border-left:3px solid var(--line);
+  border-radius:10px; padding:10px 12px}
+.nspx-cbitem.triggered{border-left-color:var(--down)}
+.nspx-cbitem.warn{border-left-color:var(--warn)}
+.nspx-cbitem.disabled{border-left-color:#d5d9de; opacity:.72}
+.nspx-cbitem.ok{border-left-color:var(--up)}
+.nspx-cbtop{display:flex; align-items:center; gap:8px; margin-bottom:3px}
+.nspx-cbtop b{font-size:12.5px}
+.nspx-cbname{font-size:12px; color:var(--ink)}
+.nspx-cbnote{font-size:11.5px; color:var(--muted); margin-top:3px; line-height:1.6}
+
+/* ---- 刷新提示 / 页脚 / 说明 ---- */
+.nspx-refresh-tip{background:var(--accent-soft); border:1px solid #d3e2fd; color:#24457f;
+  border-radius:10px; padding:8px 12px; font-size:12.5px; margin-bottom:12px}
+.nspx-foot{margin:4px 0 18px; font-size:12px; color:var(--muted); line-height:1.8}
+.nspx-note{margin-top:22px; background:var(--surface); border:1px solid var(--line);
+  border-radius:var(--radius); padding:14px 16px; font-size:12.5px; color:var(--ink-2); line-height:1.75}
+.nspx-note>b:first-child{color:var(--ink)}
+.nspx-note ul{margin:6px 0 0; padding-left:18px}
+.nspx-note li{margin:5px 0}
+.nspx-note code{background:var(--line-2); padding:1px 5px; border-radius:4px; font-size:11.5px}
+
+@media (max-width:640px){
+  .nspx-vright{text-align:left}
+  .nspx-leggrid{grid-template-columns:repeat(2,1fr)}
+  .nspx-grid{grid-template-columns:repeat(auto-fill,minmax(112px,1fr))}
+}
+
+/* ====== ndxspx:begin ====== */
+/* ============ ndxspx · NASDAQ & S&P 加仓决策 ============
+   配色沿用站点口径：--up 红（可投 / 涨）、--down 绿（停手 / 跌）、--warn 黄（警戒）。
+   所有类名前缀 nspx-，不与其它模块冲突。
+*/
+
+/* ---- 决策卡（红绿灯） ---- */
+.nspx-verdict{display:flex; align-items:center; gap:18px; flex-wrap:wrap;
+  background:var(--surface); border:1px solid var(--line); border-left:4px solid var(--line);
+  border-radius:var(--radius); box-shadow:var(--shadow); padding:16px 18px; margin-bottom:14px}
+.nspx-verdict.up{border-left-color:var(--up)}
+.nspx-verdict.down{border-left-color:var(--down)}
+.nspx-verdict.warn{border-left-color:var(--warn)}
+.nspx-vleft{flex:1; min-width:280px}
+.nspx-vlabel{font-size:12px; color:var(--muted)}
+.nspx-vaction{font-size:22px; font-weight:650; margin:2px 0 6px; letter-spacing:.01em}
+.nspx-verdict.up .nspx-vaction{color:var(--up)}
+.nspx-verdict.down .nspx-vaction{color:var(--down)}
+.nspx-verdict.warn .nspx-vaction{color:var(--warn)}
+.nspx-vsub{font-size:12.5px; color:var(--ink-2); line-height:1.7}
+.nspx-vright{text-align:right; flex:none; min-width:150px}
+.nspx-vsize{font-size:30px; font-weight:650; font-variant-numeric:tabular-nums; line-height:1.15}
+.nspx-vsize span{font-size:12px; font-weight:400; color:var(--muted); margin-left:4px}
+.nspx-vhint{font-size:11.5px; color:var(--muted); margin-top:2px}
+
+/* ---- 告警条 ---- */
+.nspx-alert{background:#fff8e6; border:1px solid #f0dfae; color:#8a6412;
+  border-radius:10px; padding:9px 12px; font-size:12.5px; margin-bottom:10px; line-height:1.65}
+.nspx-alert.warn{background:#fff8e6; border-color:#f0dfae; color:#8a6412}
+.nspx-alert.down{background:#fdecec; border-color:#f4c9c9; color:#9e2b2b}
+.nspx-alert.info{background:var(--accent-soft); border-color:#d3e2fd; color:#24457f}
+
+/* ---- L0 月度已投开关 ---- */
+.nspx-l0{display:flex; align-items:flex-start; gap:8px 16px; flex-wrap:wrap;
+  background:var(--surface); border:1px solid var(--line); border-radius:var(--radius);
+  padding:11px 14px; margin-bottom:14px}
+.nspx-l0box{display:flex; align-items:center; gap:8px; cursor:pointer; user-select:none; flex:none}
+.nspx-l0box input{width:16px; height:16px; margin:0; cursor:pointer; accent-color:var(--accent)}
+.nspx-l0box input:disabled{cursor:wait}
+.nspx-l0box b{font-size:13px; font-weight:600}
+.nspx-l0 .nspx-dim{flex:1; min-width:240px; line-height:1.65; font-size:11.5px}
+.nspx-l0 .nspx-dim b{color:var(--ink-2)}
+/* 「已投」的金额：划掉 + 转灰，但数字留着，方便对账 */
+.nspx-vsize.used,.nspx-legamt.used{color:var(--muted); text-decoration:line-through}
+
+/* ---- 通用块 ---- */
+.nspx-sec{margin-bottom:20px}
+.nspx-sec h3{font-size:14px; font-weight:650; margin:0 0 8px}
+.nspx-hint{font-size:12px; color:var(--muted); margin-bottom:8px; line-height:1.7}
+.nspx-hint b{color:var(--ink-2)}
+.nspx-hint2{font-size:12px; color:var(--muted); margin-top:8px}
+.nspx-hint2 b{color:var(--ink-2)}
+.nspx-dim{font-style:normal; color:var(--muted); font-size:11.5px}
+
+/* ---- 两条腿 ---- */
+.nspx-legs{display:grid; grid-template-columns:repeat(auto-fit,minmax(320px,1fr)); gap:12px}
+.nspx-leg{background:var(--surface); border:1px solid var(--line); border-radius:var(--radius);
+  padding:14px 16px; box-shadow:var(--shadow); border-top:3px solid var(--line)}
+.nspx-leg.up{border-top-color:var(--up)}
+.nspx-leg.warn{border-top-color:var(--warn)}
+.nspx-leg.down{border-top-color:var(--down)}
+.nspx-leghead{display:flex; align-items:baseline; gap:10px; margin-bottom:6px}
+.nspx-legname{font-size:15px; font-weight:650; flex:1}
+.nspx-legamt{font-size:24px; font-weight:650; font-variant-numeric:tabular-nums}
+.nspx-legamt span{font-size:12px; font-weight:400; color:var(--muted); margin-left:3px}
+.nspx-badge{font-size:11px; font-weight:400; padding:1px 7px; border-radius:999px; margin-left:8px;
+  background:var(--line-2); color:var(--muted)}
+.nspx-badge.ok{background:#fdecec; color:var(--up)}
+.nspx-badge.no{background:#e7f5ed; color:var(--down)}
+.nspx-badge.warn{background:#fff8e6; color:var(--warn)}
+.nspx-legreason{font-size:12.5px; color:var(--ink-2); line-height:1.7; margin-bottom:8px}
+.nspx-legsplit{font-size:12px; color:#8a6412; background:#fff8e6; border:1px solid #f0dfae;
+  border-radius:8px; padding:5px 9px; margin-bottom:8px}
+.nspx-leggrid{display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin:8px 0}
+.nspx-legfoot{font-size:11.5px; color:var(--muted); line-height:1.7;
+  border-top:1px solid var(--line-2); padding-top:8px; margin-top:8px}
+
+/* ---- 单元格 ---- */
+.nspx-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(140px,1fr)); gap:10px}
+.nspx-cell{background:var(--surface); border:1px solid var(--line); border-radius:10px; padding:10px 12px}
+.nspx-cell .k{font-size:11.5px; color:var(--muted)}
+.nspx-cell .v{font-size:16px; font-weight:650; font-variant-numeric:tabular-nums; margin-top:3px}
+.nspx-cell .v.up{color:var(--up)}
+.nspx-cell .v.down{color:var(--down)}
+.nspx-cell .v.warn{color:var(--warn)}
+.nspx-cell .v.flat{color:var(--ink)}
+
+/* ---- ERP 坐标轴 ---- */
+.nspx-axis{margin:6px 0 14px}
+.nspx-axisbar{position:relative; height:64px; background:var(--surface-2);
+  border:1px solid var(--line); border-radius:10px; overflow:visible}
+.nspx-zone{position:absolute; top:0; bottom:0; opacity:.5}
+.nspx-zone.z0{background:#eceff3}
+.nspx-zone.z1{background:#fdf0d5}
+.nspx-zone.z2{background:#fbdcdc}
+.nspx-zone.z3{background:#f6c3c3}
+.nspx-mark{position:absolute; top:0; bottom:0; width:0; border-left:1px dashed #9aa3af}
+.nspx-mark span{position:absolute; top:2px; left:4px; font-size:10.5px; color:var(--ink-2);
+  white-space:nowrap; font-variant-numeric:tabular-nums}
+.nspx-needle{position:absolute; top:0; bottom:0; display:flex; flex-direction:column;
+  justify-content:center; align-items:center; transform:translateX(-50%); pointer-events:none}
+.nspx-needle:before{content:''; position:absolute; top:-1px; bottom:-1px; width:2px}
+.nspx-needle.a:before{background:var(--up)}
+.nspx-needle.b:before{background:var(--accent)}
+.nspx-needle b{font-size:10.5px; background:#fff; padding:1px 4px; border-radius:4px; line-height:1.4}
+.nspx-needle.a b{color:var(--up)}
+.nspx-needle.b b{color:var(--accent)}
+.nspx-needle span{font-size:10.5px; background:#fff; padding:0 3px; color:var(--ink-2);
+  font-variant-numeric:tabular-nums}
+.nspx-axisscale{display:flex; justify-content:space-between; font-size:10.5px; color:var(--muted); margin-top:4px}
+
+/* ---- 距离表 ---- */
+.nspx-dist{display:grid; gap:10px}
+.nspx-distrow{background:var(--surface); border:1px solid var(--line); border-radius:10px; padding:10px 12px}
+.nspx-distname{font-size:12.5px; font-weight:650; margin-bottom:6px}
+.nspx-distcells{display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:8px}
+.nspx-dcell .k{font-size:11px; color:var(--muted)}
+.nspx-dcell .v{font-size:14px; font-weight:650; font-variant-numeric:tabular-nums; margin-top:2px}
+.nspx-dcell .v.up{color:var(--up)}
+.nspx-dcell .v.flat{color:var(--ink)}
+
+/* ---- 曲线 ---- */
+.nspx-spark{width:100%; height:110px; display:block; background:var(--surface);
+  border:1px solid var(--line); border-radius:10px}
+.nspx-curves{display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:12px}
+.nspx-curveblk{background:var(--surface); border:1px solid var(--line); border-radius:10px; padding:10px 12px}
+.nspx-curvetitle{font-size:12.5px; font-weight:650; margin-bottom:6px; display:flex; justify-content:space-between}
+.nspx-curvetitle span{font-weight:400; color:var(--muted); font-size:11.5px; font-variant-numeric:tabular-nums}
+.nspx-legend{display:flex; gap:14px; margin-top:6px}
+.nspx-li{font-size:11.5px; color:var(--ink-2); display:flex; align-items:center; gap:5px}
+.nspx-li:before{content:''; width:10px; height:2px; background:var(--c, var(--accent)); border-radius:2px}
+
+/* ---- 表格 ---- */
+.nspx-twrap{overflow-x:auto; border:1px solid var(--line); border-radius:var(--radius); background:var(--surface)}
+.nspx-table{width:100%; border-collapse:collapse; font-size:12.5px; font-variant-numeric:tabular-nums}
+.nspx-table th,.nspx-table td{padding:7px 10px; border-bottom:1px solid var(--line-2); text-align:left; white-space:nowrap}
+.nspx-table thead th{background:var(--surface-2); color:var(--ink-2); font-weight:600}
+.nspx-table tbody tr:last-child td{border-bottom:none}
+.nspx-table td.up{color:var(--up)}
+.nspx-table td.down{color:var(--down)}
+.nspx-table td.warn{color:var(--warn)}
+
+/* ---- 熔断 ---- */
+.nspx-cb{display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:10px}
+.nspx-cbitem{background:var(--surface); border:1px solid var(--line); border-left:3px solid var(--line);
+  border-radius:10px; padding:10px 12px}
+.nspx-cbitem.triggered{border-left-color:var(--down)}
+.nspx-cbitem.warn{border-left-color:var(--warn)}
+.nspx-cbitem.disabled{border-left-color:#d5d9de; opacity:.72}
+.nspx-cbitem.ok{border-left-color:var(--up)}
+.nspx-cbtop{display:flex; align-items:center; gap:8px; margin-bottom:3px}
+.nspx-cbtop b{font-size:12.5px}
+.nspx-cbname{font-size:12px; color:var(--ink)}
+.nspx-cbnote{font-size:11.5px; color:var(--muted); margin-top:3px; line-height:1.6}
+
+/* ---- 刷新提示 / 页脚 / 说明 ---- */
+.nspx-refresh-tip{background:var(--accent-soft); border:1px solid #d3e2fd; color:#24457f;
+  border-radius:10px; padding:8px 12px; font-size:12.5px; margin-bottom:12px}
+.nspx-foot{margin:4px 0 18px; font-size:12px; color:var(--muted); line-height:1.8}
+.nspx-note{margin-top:22px; background:var(--surface); border:1px solid var(--line);
+  border-radius:var(--radius); padding:14px 16px; font-size:12.5px; color:var(--ink-2); line-height:1.75}
+.nspx-note>b:first-child{color:var(--ink)}
+.nspx-note ul{margin:6px 0 0; padding-left:18px}
+.nspx-note li{margin:5px 0}
+.nspx-note code{background:var(--line-2); padding:1px 5px; border-radius:4px; font-size:11.5px}
+
+@media (max-width:640px){
+  .nspx-vright{text-align:left}
+  .nspx-leggrid{grid-template-columns:repeat(2,1fr)}
+  .nspx-grid{grid-template-columns:repeat(auto-fill,minmax(112px,1fr))}
+}
+/* ====== ndxspx:end ====== */
+
+/* ================= 移动端 tab 栏可用性（2026-09-26） =================
+   背景：.tabs 是 `flex:1`（= flex:1 1 0%，flex-basis 为 0）。
+   原来的 @media(max-width:640px) 里写 `.tabs{order:3; width:100%}` 是无效的 ——
+   flex 项目的 flex-basis:0 优先于 width，宽度仍由 flex 分配决定。
+   实测 iPhone 390px 下 .tabs 只拿到 212px，而内容宽 1880px：
+   16 个 tab 里 14 个在屏外，且没有任何"右边还有内容"的提示，等于藏起来了。
+
+   修法：flex-basis 改 100% 强制 tab 栏独占一行（topbar 已 flex-wrap:wrap）。
+   横滑保留（16 个 tab 一屏确实放不下），但补两个东西：
+     a) 两侧渐隐遮罩，只在「那一侧还有内容」时出现（class 由 app.js 的 syncTabsEdge 维护）；
+     b) 切换 tab 时把当前 tab 滚进视野（app.js 的 focusTab）。
+   ===================================================================== */
+@media (max-width:640px){
+  .topbar{ row-gap:8px; }
+
+  .tabs{
+    order:3;
+    flex:1 0 100%;          /* ← 关键：不是 width:100%，flex-basis 才是决定项 */
+    padding:2px 0 4px;
+    scroll-snap-type:x proximity;
+    overscroll-behavior-x:contain;
+  }
+  .tab{
+    padding:6px 11px;
+    font-size:13.5px;
+    scroll-snap-align:center;
+  }
+
+  /* 横滑提示：26px 渐隐只出现在还有内容的那一侧 */
+  .tabs.can-r{ -webkit-mask-image:linear-gradient(to right,#000 calc(100% - 26px),transparent);
+               mask-image:linear-gradient(to right,#000 calc(100% - 26px),transparent); }
+  .tabs.can-l{ -webkit-mask-image:linear-gradient(to left,#000 calc(100% - 26px),transparent);
+               mask-image:linear-gradient(to left,#000 calc(100% - 26px),transparent); }
+  .tabs.can-l.can-r{
+    -webkit-mask-image:linear-gradient(to right,transparent,#000 26px,#000 calc(100% - 26px),transparent);
+    mask-image:linear-gradient(to right,transparent,#000 26px,#000 calc(100% - 26px),transparent); }
+}
+
+/* 触屏：小按钮加大可点区域（40px 是拇指舒适下限，这里放宽到 34px 折中密度） */
+@media (hover:none){
+  .tab{padding:7px 12px}
+  .ghost{padding:7px 12px}
+}

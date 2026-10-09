@@ -25,8 +25,29 @@ const UA =
  * 有时 Node 的 fetch 跟跳转时会直接报 "fetch failed"，整页变成「无行情」。
  * 实测直接打延时节点是稳的：5/5 成功，每次约 2 秒，比绕跳转还快一倍。
  * 所以：延时节点优先，push2 当备用。
+ *
+ * 2026-09-26 追加：push2 / push2delay 两个「裸域名」从这台机器已经全部返回 502
+ * （边缘节点拒境外 IP，响应是 nginx 的 Bad Gateway，不是限流也不是超时）。
+ * 后果是整个波段工作台 6 只标的齐刷刷显示「无行情」——因为它只依赖这两个域。
+ * 同一时刻实测：**带数字前缀的子域还活着**，且 ulist.np 批量接口完全正常：
+ *     1.push2 / 2.push2 / 7.push2 / 48.push2 / 60.push2  → 200
+ *     push2 / push2delay                                  → 502
+ * 所以把数字子域接在后面当第三～五顺位。裸域保留在最前：万一哪天东财放开
+ * 境外 IP，还是优先走官方推荐的延时节点，行为和以前一致。
+ *
+ * ⚠ 维护提醒：这不是永久方案，东财随时可能把这些子域也封掉。
+ *   fetchBatch 已经有腾讯兜底（见下方 txBatch），不再怕东财整体封禁；
+ *   fetchOne 也有腾讯兜底（txFetchOne）。两边都炸才会回到「无行情」。
  */
-const EM_HOSTS = ['https://push2delay.eastmoney.com', 'https://push2.eastmoney.com'];
+const EM_HOSTS = [
+  'https://push2delay.eastmoney.com',
+  'https://push2.eastmoney.com',
+  'https://1.push2.eastmoney.com',
+  'https://2.push2.eastmoney.com',
+  'https://7.push2.eastmoney.com',
+  'https://48.push2.eastmoney.com',
+  'https://60.push2.eastmoney.com',
+];
 const EM_QUOTE_PATH = '/api/qt/stock/get';
 const EM_BATCH_PATH = '/api/qt/ulist.np/get';
 const EM_SUGGEST = 'https://searchapi.eastmoney.com/api/suggest/get';
@@ -110,23 +131,145 @@ async function getJSON(path, search) {
   throw lastErr || new Error('行情接口全部不可用');
 }
 
-/** 单股：唯一能拿到可信 f59（小数位）的接口，只在新增标的时调用一次 */
-export async function fetchOne(secid) {
-  const j = await getJSON(
-    EM_QUOTE_PATH,
-    `secid=${encodeURIComponent(secid)}&fields=f43,f57,f58,f59,f60,f169,f170`
-  );
-  const d = j && j.data;
-  if (!d || d.f43 == null) return null;
-  const dec = Number.isInteger(d.f59) ? d.f59 : 2;
+/* ---------------- 腾讯兜底（2026-09-26 加） ----------------
+ * 东财从境外 IP アクセス 502 之后，这里就是唯一的主心骨。
+ * 腾讯 qt.gtimg.cn 对海外 IP 没有限制，实测 0.17s，且与东财的值完全一致
+ * （2026-09-26 交叉核对：贵州茅台 1237.00 / 腾讯控股 436.600 / 比亚迪 84.34，
+ *   两个源小数点后都相同 —— 取哪个都不影响信号判断）。
+ *
+ * 两个和东财不同的地方，照抄 etf-data.js 的口径：
+ *   1. 返回 GBK，要 TextDecoder('gbk') 解码（本机 ICU 支持）；
+ *   2. 价格是「带小数点的字符串」（"2.118"），不是整数 —— 反而更好，
+ *      小数位可以直接数出来，不用再去问东财那个已经挂掉的 f59。
+ */
+async function httpBinary(url, { timeout = TIMEOUT_MS } = {}) {
+  const ac = new AbortController();
+  const timer = setTimeout(() => ac.abort(), timeout);
+  try {
+    const r = await fetch(url, { headers: { 'User-Agent': UA }, signal: ac.signal });
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    return new Uint8Array(await r.arrayBuffer());
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/** 行 -> 腾讯 q 前缀。港股 r_hk + 5 位；A 股按 secid 的市场号判沪/深（比猜首位数字准）。 */
+function txPrefix(row) {
+  const c = String(row.code || '').replace(/\D/g, '');
+  if (row.market === 'H') return 'r_hk' + c.padStart(5, '0');
+  if (String(row.secid || '').startsWith('0.')) return 'sz' + c.padStart(6, '0');
+  if (String(row.secid || '').startsWith('1.')) return 'sh' + c.padStart(6, '0');
+  return (/^[569]/.test(c) ? 'sh' : 'sz') + c.padStart(6, '0');
+}
+
+/** 只有 secid 时也能拼出腾讯前缀（给 fetchOne 的兜底用）。 */
+function rowOfSecid(secid) {
+  const [mk, code] = String(secid).split('.');
+  return { secid, market: mk === '116' ? 'H' : 'A', code };
+}
+
+/** "1237.00" -> 2 ； "2.118" -> 3 ；整数串 -> 0 */
+function decimalsOf(s) {
+  const m = /\d+\.(\d+)$/.exec(String(s || ''));
+  return m ? m[1].length : 0;
+}
+
+/** 腾讯批量：一次请求拉全部，返回与 fetchBatch 完全同构的 Map。 */
+async function txBatch(rows) {
+  const need = rows.filter((r) => r.secid && Number(r.decimals) > 0);
+  if (!need.length) return new Map();
+
+  const key2row = new Map(need.map((r) => [txPrefix(r), r]));
+  const buf = await httpBinary(`https://qt.gtimg.cn/q=${[...key2row.keys()].join(',')}`, {
+    timeout: 12000,
+  });
+  const raw = new TextDecoder('gbk').decode(buf);
+
+  const out = new Map();
+  for (const line of raw.split(/;\s*/)) {
+    // 每行形如： v_sh600519="1~贵州茅台~600519~1237.00~..."
+    const m = /^v_([a-z_0-9]+)="([\s\S]*?)"?$/.exec(line.trim());
+    if (!m) continue;
+    const row = key2row.get(m[1]);
+    if (!row) continue;
+    const a = m[2].replace(/";?\s*$/, '').split('~');
+    if (a.length < 40) continue;
+
+    const price = Number(a[3]);
+    const prev = Number(a[4]);
+    if (!Number.isFinite(price) || price <= 0) continue;
+
+    // 下游 fetchBatch 契约是「整数 raw / 10**decimals」，这里反乘回去，
+    // 这样调用侧一行都不用改。
+    const dec = Number(row.decimals) || 2;
+    const div = 10 ** dec;
+    out.set(row.secid, {
+      rawPrice: Math.round(price * div),
+      rawPrev: Number.isFinite(prev) ? Math.round(prev * div) : null,
+      rawAmount: Number(a[37]) != null && Number.isFinite(Number(a[37])) ? Number(a[37]) * 1e4 : null,
+      nameRaw: String(a[1] || '').replace(/\s+/g, ''),
+      _tx: true,
+    });
+  }
+  return out;
+}
+
+/** 腾讯单只：给 fetchOne 兜底，重点是拿到可信的小数位。 */
+async function txFetchOne(row) {
+  const buf = await httpBinary(`https://qt.gtimg.cn/q=${txPrefix(row)}`, { timeout: 10000 });
+  const raw = new TextDecoder('gbk').decode(buf);
+  const i = raw.indexOf('="');
+  if (i < 0) throw new Error('腾讯返回异常');
+  const a = raw.slice(i + 2).replace(/";?\s*$/, '').split('~');
+  if (a.length < 40) throw new Error('腾讯行情字段不足');
+
+  const price = Number(a[3]);
+  if (!Number.isFinite(price) || price <= 0) throw new Error('腾讯没查到这个代码');
+
+  const dec = decimalsOf(a[3]) || 2;
   const div = 10 ** dec;
   return {
-    secid,
-    name: String(d.f58 || '').replace(/\s+/g, ''),
+    secid: row.secid,
+    name: String(a[1] || '').replace(/\s+/g, ''),
     decimals: dec,
-    price: d.f43 / div,
-    prevClose: d.f60 == null ? null : d.f60 / div,
+    price,
+    prevClose: Number.isFinite(Number(a[4])) ? Number(a[4]) : null,
+    rawPrice: Math.round(price * div),
+    rawPrev: Number.isFinite(Number(a[4])) ? Math.round(Number(a[4]) * div) : null,
   };
+}
+
+/** 单股：唯一能拿到可信 f59（小数位）的接口，只在新增标的时调用一次。
+ *  2026-09-26 加腾讯兜底：东财的 stock/get 从这台机器已经去不到了
+ *  （裸域 502、数字子域返回空），如果还只认东财，用户每加一只新标的都拿不到小数位，
+ *  往后算出来的价格会整体错一个数量级。
+ *  腾讯反而更直接：它的第 4 个字段就是带小数点的报价串，"2.118" 一看就是 3 位小数。
+ *  两者都拿不到才返回 null（调用方已有 suggest 兜流程，不会炸）。 */
+export async function fetchOne(secid) {
+  try {
+    const j = await getJSON(
+      EM_QUOTE_PATH,
+      `secid=${encodeURIComponent(secid)}&fields=f43,f57,f58,f59,f60,f169,f170`
+    );
+    const d = j && j.data;
+    if (!d || d.f43 == null) throw new Error('东财没返回价格');
+    const dec = Number.isInteger(d.f59) ? d.f59 : 2;
+    const div = 10 ** dec;
+    return {
+      secid,
+      name: String(d.f58 || '').replace(/\s+/g, ''),
+      decimals: dec,
+      price: d.f43 / div,
+      prevClose: d.f60 == null ? null : d.f60 / div,
+    };
+  } catch (emErr) {
+    try {
+      return await txFetchOne(rowOfSecid(secid));
+    } catch {
+      return null; // 调用方早已处理 null，保持契约不变
+    }
+  }
 }
 
 /** 批量：一次请求拿全部价格。注意它不带可用小数位，所以必须靠库里的 decimals */
@@ -215,6 +358,7 @@ function signalOf(row, price) {
 async function buildSnapshot() {
   const db = getDB();
   const rows = listWatch(db);
+  let quoteSource = '东财'; // 实际哪个源喂出来的，写进响应里，排障时一眼能看出是不是又换了路
   if (!rows.length) {
     return { items: [], fetchedAt: new Date().toISOString(), stale: false, count: 0 };
   }
@@ -260,7 +404,16 @@ async function buildSnapshot() {
   try {
     quotes = await fetchBatch(secids);
   } catch (e) {
-    quoteError = e.message;
+    // 2026-09-26：东财的 ulist.np 从这台机器走裸域已经一律 502，
+    // 这里补腾讯兜底 —— 不然整个波段工作台会一直是「无行情」。
+    // txBatch 返回的结构与 fetchBatch 完全同构，下面一行都不用改。
+    try {
+      quotes = await txBatch(all);
+      if (!quotes.size) throw new Error('腾讯也没返回任何行情');
+      quoteSource = '腾讯';
+    } catch (e2) {
+      quoteError = `东财 ${e.message}；腾讯 ${e2.message}`;
+    }
   }
 
   // 拉价失败时，退回上一次的价格，别让页面一会儿有价一会儿空白。
@@ -310,6 +463,7 @@ async function buildSnapshot() {
     fetchedAt: new Date().toISOString(),
     stale: !!quoteError,
     error: quoteError || (enrichErrors ? `${enrichErrors} 只标的代码查不到行情` : null),
+    source: quoteSource,
     count: items.length,
   };
 }

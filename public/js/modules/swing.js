@@ -58,11 +58,15 @@ function intervalBar() {
 }
 
 function legendHTML() {
+  // 2026-09-26：这里原来写死「抓取自东方财富延时节点」。东财后来对境外 IP 全通道 502，
+  // 后端已经改成东财优先、腾讯兜底，再写死一个源名就是骗人了。
+  // 现在用响应里的 source 字段（服务端每次真实记录这一轮是谁喂出来的）。
+  const src = (S.meta && S.meta.source) || '东财';
   return `<div class="sw-legend">
     <span class="sw-chip sw-pink">现价 ≤ 买点 → 考虑买</span>
     <span class="sw-chip sw-red">现价 ≥ 卖点 → 考虑卖</span>
     <span class="sw-chip sw-flat">中间 → 不动</span>
-    <span class="sw-note">涨跌幅红涨绿跌。数据由服务端抓取自东方财富延时节点（服务器在海外），下单前请以券商端为准。</span>
+    <span class="sw-note">涨跌幅红涨绿跌。数据由服务端抓取自${esc(src)}（服务器在海外），下单前请以券商端为准。</span>
   </div>`;
 }
 

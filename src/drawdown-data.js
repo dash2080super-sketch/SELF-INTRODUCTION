@@ -46,7 +46,9 @@ export const INDEXES = [
   },
 ];
 
-const RANGE_MONTHS = 3;
+// 12 个月 ≈ 250 个交易日。原来是 3 个月，但「距一年高点回撤」需要满 250 日窗口，
+// 3 个月的日线算不出一年高点，只能拿上游的 fiftyTwoWeekHigh 顶上（盘中口径，虚高）。
+const RANGE_MONTHS = 12;
 const TTL = 30 * 60 * 1000; // 日线数据，半小时刷一次足够
 const DISK_MAX_AGE = 12 * 60 * 60 * 1000; // 磁盘缓存超过 12 小时就不再当新鲜货
 const CACHE_FILE = path.join(ROOT, 'data', 'drawdown-cache.json');
@@ -242,11 +244,48 @@ async function fetchOne(def) {
     });
   });
   if (!rows.length) throw new Error('没有收盘价');
+
+  // 回撤口径统一：用最近 250 个交易日的**收盘**最高价。
+  // 为什么不用 meta.fiftyTwoWeekHigh：那是 52 周**盘中**最高，比收盘高系统性偏高一截
+  // （日经上实测差 465 点，回撤虚高约 60bp）。而加仓档位是收盘后决策、次日开盘执行，
+  // 拿盘中高价算回撤会让人误以为跌得比实际更深，在档位边界上过早跳进更激进的那一档。
+  // /api/n225 一直是 250 日收盘口径，这里对齐它，全站一个真相。
+  // high52 保留但只作参考，前端不拿它算回撤。
+  let peak250 = null;
+  let peak250Date = null;
+  for (const r of rows.slice(-250)) {
+    if (peak250 == null || r.close > peak250) {
+      peak250 = r.close;
+      peak250Date = r.date;
+    }
+  }
+
+  // Yahoo 的日线数组偶尔会落后一天。实测 2026-10-01：^N225 的 regularMarketPrice 已经是当日
+  // 收盘 68,956.72，但日线数组最后一根还停在 09-30 的 66,753.72。只按数组取"当前价"会把回撤
+  // 算成 -7.76%（实际 -4.71%），差 3 个百分点——这个量级会直接跨过加仓档位的边界
+  // （-10% / -6% / -3%），必须补上。
+  // 只补**分子**（当前价）：peak250 仍然只吃收盘序列，盘中价不许污染分母。
+  const lastRow = rows[rows.length - 1];
+  const isoDate = (d) =>
+    `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`;
+  const mt = res.meta?.regularMarketTime ? new Date(res.meta.regularMarketTime * 1000) : null;
+  const mtDate = mt ? isoDate(mt) : null;
+  const mkt = res.meta?.regularMarketPrice;
+  const newer = mtDate != null && mkt != null && Number.isFinite(mkt) && mtDate > lastRow.date;
+
   return {
     ...def,
     currency: res.meta?.currency || '',
-    high52: res.meta?.fiftyTwoWeekHigh ?? null,
+    high52: res.meta?.fiftyTwoWeekHigh ?? null, // 盘中口径，仅参考，不用于回撤
+    peak250,
+    peak250Date,
     rows,
+    // 前端算回撤一律用这个当"当前价"，别再拿 rows 最后一根（它可能是一天前）
+    lastPrice: newer ? Math.round(mkt * 100) / 100 : lastRow.close,
+    lastDate: newer ? mtDate : lastRow.date,
+    lastIsNewer: newer,
+    // 日线数组缺当日那根时，日涨跌也得自己算（基准就是最后一根收盘）
+    lastChgPct: newer ? Math.round((mkt / lastRow.close - 1) * 10000) / 100 : null,
   };
 }
 

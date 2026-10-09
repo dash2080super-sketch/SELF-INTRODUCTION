@@ -36,13 +36,25 @@ function series(idx) {
 function slice(idx) {
   const n = Math.min(WIN, idx.rows.length);
   const s = idx.rows.length - n;
-  return { rows: idx.rows.slice(s), ch: series(idx).ch.slice(s), s };
+  const rows = idx.rows.slice(s);
+  const ch = series(idx).ch.slice(s);
+  // 日线数组缺当日那根时（Yahoo 对日股偶发），把当前价接到序列尾巴上。
+  // 不接的话连涨/连跌会漏掉今天，累计涨幅的基准也会错一天
+  // （实测日经显示"连涨 1 天 累计 +5.31%"，实际今天只有 +3.30%）。
+  if (idx.lastIsNewer && Number.isFinite(idx.lastPrice) && rows.length) {
+    const prev = rows[rows.length - 1].close;
+    rows.push({ date: idx.lastDate, close: idx.lastPrice });
+    ch.push((idx.lastPrice / prev - 1) * 100);
+  }
+  return { rows, ch, s };
 }
 
 function metrics(idx) {
   const w = slice(idx);
   const closes = w.rows.map((r) => r.close);
-  const last = closes[closes.length - 1];
+  // 当前价优先用后端给的 lastPrice：Yahoo 的日线数组偶尔落后一天（^N225 实测落后一根），
+  // 拿 rows 最后一根当"当前价"会把回撤算错几个百分点。lastPrice 缺失时回落到旧逻辑。
+  const last = Number.isFinite(idx.lastPrice) ? idx.lastPrice : closes[closes.length - 1];
 
   // 当前回撤 / 区间最大回撤
   let peak = closes[0];
@@ -75,14 +87,17 @@ function metrics(idx) {
     cum = (last / base - 1) * 100;
   }
 
-  const d52 = idx.high52 ? (last / idx.high52 - 1) * 100 : null;
+  // 距一年高点回撤：用后端算好的 250 交易日**收盘**最高（peak250）。
+  // 不用 idx.high52（52 周盘中最高，虚高），与 /api/n225 的口径保持一致。
+  const d250 = idx.peak250 ? (last / idx.peak250 - 1) * 100 : null;
   return {
     last,
-    day: w.rows[w.rows.length - 1].date,
-    chDay: w.ch[w.ch.length - 1],
+    day: idx.lastDate || w.rows[w.rows.length - 1].date,
+    // 后端补了当日价时，日涨跌也用它给的；否则沿用日线序列算的那根
+    chDay: idx.lastIsNewer && Number.isFinite(idx.lastChgPct) ? idx.lastChgPct : w.ch[w.ch.length - 1],
     dd,
     mdd: mdd * 100,
-    d52,
+    d250,
     k,
     dir,
     cum,
@@ -128,7 +143,7 @@ function cardHTML(idx) {
     <div class="dd-kv">
       <div><div class="k">当前回撤</div><div class="v ${m.dd < 0 ? 'down' : 'flat'}">${m.dd < 0 ? m.dd.toFixed(2) + '%' : '0.00%'}</div></div>
       <div><div class="k">区间最大回撤</div><div class="v ${m.mdd < 0 ? 'down' : 'flat'}">${m.mdd.toFixed(2)}%</div></div>
-      <div><div class="k">距 52 周高点</div><div class="v ${m.d52 != null && m.d52 < 0 ? 'down' : 'flat'}">${m.d52 == null ? '—' : m.d52.toFixed(2) + '%'}</div></div>
+      <div><div class="k">距 250 日收盘高</div><div class="v ${m.d250 != null && m.d250 < 0 ? 'down' : 'flat'}">${m.d250 == null ? '—' : m.d250.toFixed(2) + '%'}</div></div>
       <div><div class="k">区间涨跌</div><div class="v ${cls(m.winChg)}">${pct(m.winChg)}</div></div>
     </div>
     <div class="dd-streak">
@@ -215,6 +230,7 @@ function shell(panel) {
       <ul>
         <li><b>回撤</b>：最新收盘相对「所选区间内最高收盘」的跌幅；0% 表示正处在区间高点。</li>
         <li><b>区间最大回撤</b>：区间内任一交易日相对此前最高收盘的最大跌幅。</li>
+        <li><b>距 250 日收盘高</b>：最新收盘相对最近 250 个交易日<b>收盘</b>最高价的跌幅。不用 52 周<b>盘中</b>最高——盘中价比收盘价系统性偏高，会把回撤算虚高，与 n225 策略页口径打架，故全站统一用收盘口径。</li>
         <li><b>连涨 / 连跌</b>：按收盘价逐日比较，<b>平盘会中断连续计数</b>；括号内为该连段累计涨跌幅。</li>
         <li>各市场休市日不同，每个指数按自己的交易日序列计算，表中休市日留空。</li>
         <li>数据源 Yahoo Finance；TOPIX 用 1306.T（东证 ETF）代理，点位不等于指数本身，但涨跌幅与连涨跌结论一致。</li>

@@ -218,7 +218,7 @@ function bodyHTML() {
     <div class="d50-foot">
       ${esc(f.name || '')}（${esc(f.code || '')}）· 跟踪 ${esc(f.indexName || '')}（${esc(f.indexCode || '')}）· 成立 ${esc(f.inception || '')} · ${esc(f.fee || '')} · ${esc(f.connect || '')}<br>
       派息日历手动维护，截至 ${esc(d?.payout?.asOf || '')}；指数侧快照截至 ${esc(d?.index?.asOf || '')}（${esc(d?.index?.src || '')}）。<br>
-      数据源：腾讯财经（行情/前复权K线）、中债估值中心（国债收益率曲线）、基金分红公告（派息）。本页为策略研究记录，不构成投资建议。
+      数据源：腾讯财经（行情/前复权K线）、中债估值中心 / 东方财富（国债收益率曲线，中债失败自动降级）、基金分红公告（派息）。本页为策略研究记录，不构成投资建议。
     </div>
   </div>`;
 }

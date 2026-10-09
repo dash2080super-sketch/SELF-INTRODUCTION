@@ -154,10 +154,18 @@ async function fetchCnbc(symbols) {
         const price = num(q.last);
         if (price == null) continue;
         const raw = String(q.change_pct || '');
-        const chgPct = raw === 'UNCH' ? null : num(raw);
+        let chgPct = raw === 'UNCH' ? null : num(raw);
+        const chg = num(q.change);
+        const prev = num(q.previous_day_closing);
+        // 上游的 change_pct 偶发与 change / previous_day_closing 不自洽，且是错得很隐蔽的那种：
+        // 实测 US2Y 的 change = -0.077、previous_day_closing = 4.887%（正确应为 -1.58%），
+        // 上游却返回 +0.1484% —— 符号是反的。同组 3M/5Y/10Y/30Y 都对，只有 2Y 坏，
+        // 所以不能靠"哪个源坏了就换源"来躲，只能不信任这个字段。
+        // 两个基础字段都在时一律自己算；缺任一字段才回落到上游的百分比。
+        if (chg != null && prev) chgPct = (chg / prev) * 100;
         out.set(q.symbol, {
           price,
-          chg: chgPct == null ? null : num(q.change),
+          chg: chgPct == null ? null : chg,
           chgPct,
           name: q.name || '',
           time: q.last_time || null,
@@ -356,13 +364,24 @@ function compose(db) {
     desc: z.desc,
     items: z.items.map((it) => {
       const legs = {};
-      let itemAge = null;
+      let itemAge = null; // 服务端取数时刻的年龄（给"这一轮刷新多快"用）
+      let tEarliest = null; // 各腿自带时间戳里最早 / 最晚的那个 —— 新鲜度必须按数据自带时间算，
+      let tLatest = null; // 否则上游返回 30 小时前的收盘价、取数时刻却是 3 秒前，界面会骗人。
+      let dataAtMs = null; // 最终挑出来给前端展示的那个时间戳
+
+      const noteDataTime = (t) => {
+        const ms = t ? Date.parse(t) : NaN;
+        if (!Number.isFinite(ms)) return;
+        tEarliest = tEarliest == null ? ms : Math.min(tEarliest, ms);
+        tLatest = tLatest == null ? ms : Math.max(tLatest, ms);
+      };
 
       for (const leg of it.legs || []) {
         const rec = store.get(legKey(it.id, leg.label));
         if (rec) {
           legs[leg.label] = rec.quote;
           itemAge = itemAge == null ? now - rec.at : Math.min(itemAge, now - rec.at);
+          noteDataTime(rec.quote?.time);
         }
       }
 
@@ -396,7 +415,21 @@ function compose(db) {
         if (tier === 'slow') slowAge = slowAge == null ? itemAge : Math.min(slowAge, itemAge);
       }
 
-      if (it.provider === 'cnn' && cnnValue) legs._ = cnnValue.quote;
+      if (it.provider === 'cnn' && cnnValue) {
+        legs._ = cnnValue.quote;
+        noteDataTime(cnnValue.quote?.time);
+      }
+
+      // 多腿指标取哪个时间戳？默认取最新的那条（各腿都新鲜时它就是答案）。
+      // 但如果最旧和最新的腿差出 30 分钟以上，说明有条腿明显掉队——通常是那个市场已经收盘
+      // （日经现货停在 15:45 JST、同一张卡的 CME 期货还在跑），这时按最旧的算，
+      // 不能拿还活着的那条腿去掩盖已经停了的那条。
+      dataAtMs =
+        tLatest == null
+          ? null
+          : tEarliest != null && tLatest - tEarliest > 30 * 60 * 1000
+            ? tEarliest
+            : tLatest;
 
       return {
         id: it.id,
@@ -404,12 +437,15 @@ function compose(db) {
         en: it.en,
         dec: it.dec,
         unit: it.unit,
+        chgUnit: it.chgUnit || null,
         dir: it.dir,
         bands: it.bands,
         note: it.note,
         srcNote: it.srcNote,
         tier,
         age: itemAge,
+        dataAt: dataAtMs == null ? null : new Date(dataAtMs).toISOString(),
+        dataAge: dataAtMs == null ? null : Math.max(0, now - dataAtMs),
         manual: it.manual || null,
         legs,
         manualValue: manual[it.id] || null,

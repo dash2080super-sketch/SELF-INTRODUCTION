@@ -44,16 +44,62 @@ function primaryValue(item) {
   return keys.length ? legs[keys[0]]?.price ?? null : null;
 }
 
-/** 新鲜度：根据数据年龄和该指标的分级给个档位 */
+const pad = (n) => String(n).padStart(2, '0');
+
+/** 把数据自带的时间戳格式化成"09-30 16:08"这种人能看懂的样子。
+ *  上游对已收盘市场只给到日期（如恒指的 "2026-09-30"），这时只显示日期，
+ *  不要硬凑一个 00:00 出来——那是假的精度。 */
+function dataClock(iso) {
+  const d = iso ? new Date(iso) : null;
+  if (!d || Number.isNaN(d.getTime())) return '时间未知';
+  if (d.getUTCHours() === 0 && d.getUTCMinutes() === 0 && d.getUTCSeconds() === 0) {
+    return `${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  }
+  return `${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+/**
+ * 新鲜度。必须按数据自带的时间戳（dataAge）算，不能按"服务端什么时候取的"（age）。
+ * 后者会骗人：上游返回 30 小时前的收盘价，取数时刻却是 3 秒前，界面就会显示"刚刚"。
+ * 2026-10-01 实测踩到的：USD/CNY 数据龄 29.9 小时却挂着"实时"标。
+ */
 function freshness(item) {
   if (item.tier === 'daily' || item.manual) return null;
-  if (item.age == null) return { level: 'old', text: '未取到' };
-  const sec = Math.round(item.age / 1000);
-  const limit = item.tier === 'fast' ? 45 : 200;
+  if (!Object.keys(item.legs || {}).length) return { level: 'old', text: '未取到' };
+  if (item.dataAge == null) {
+    // 拿不到数据自带时间戳的只有 TradingView 那两条腿（端点不返回时间），源本身是延迟行情
+    return { level: 'aging', text: '延迟约 15 分' };
+  }
+  const sec = Math.round(item.dataAge / 1000);
+  // 阈值比刷新周期宽一圈：实时档 20 秒拉一次，但上游自己还有推送节奏
+  // （CNBC 的金价约 60 秒一跳、Yahoo 的波动率家族约 15 分钟一跳），
+  // 按刷新周期卡会把"上游刚到下一跳之前"误判成陈旧。
+  const limit = item.tier === 'fast' ? 90 : 240;
   if (sec <= limit) return { level: 'live', text: sec <= 1 ? '刚刚' : `${sec} 秒前` };
-  if (sec <= limit * 3) return { level: 'aging', text: `${sec} 秒前` };
-  return { level: 'old', text: Math.round(sec / 60) + ' 分钟前' };
+  if (sec <= limit * 3) {
+    // 超过两分钟就别说"610 秒前"了，没人这么读
+    return { level: 'aging', text: sec > 120 ? `${Math.round(sec / 60)} 分钟前` : `${sec} 秒前` };
+  }
+  const min = Math.round(sec / 60);
+  // 半小时以内算"慢了一拍"，不算故障：CNBC 的期货腿比现货慢几分钟、
+  // Yahoo 的 VIX 家族约 15 分钟推一次，都是上游固有节奏。
+  // 超过半小时就直接报数据自己的时间：收盘价、节假日休市都落在这里。
+  // 让人看清楚数据到底是哪个时点的，比假装它还活着有用。
+  if (min < 30) return { level: 'aging', text: `${min} 分钟前` };
+  return { level: 'old', text: '数据 ' + dataClock(item.dataAt) };
 }
+
+/** 涨跌文案。收益率类走 bp，其余走百分比。 */
+function chgText(q, item) {
+  if (item.chgUnit === 'bp') {
+    if (q.chg == null || !Number.isFinite(q.chg)) return '—';
+    const bp = q.chg * 100;
+    return `${bp > 0 ? '+' : ''}${bp.toFixed(1)}bp`;
+  }
+  return sign(q.chgPct);
+}
+
+const chgCls = (q, item) => (item.chgUnit === 'bp' ? cls(q.chg) : cls(q.chgPct));
 
 function cardHTML(item) {
   const isManual = !!item.manual;
@@ -79,7 +125,7 @@ function cardHTML(item) {
       valueHTML = `<div class="fv-main">
         <span class="fv-num">${fmt(q.price, item.dec)}</span>
         ${item.unit ? `<span class="fv-unit">${esc(item.unit)}</span>` : ''}
-        <span class="fv-chg ${cls(q.chgPct)}">${sign(q.chgPct)}</span>
+        <span class="fv-chg ${chgCls(q, item)}">${chgText(q, item)}</span>
       </div>
       <div class="fv-sub">${esc(label)} · ${esc(SRC_NAME[q.src] || q.src)}</div>`;
     } else {
@@ -87,7 +133,7 @@ function cardHTML(item) {
         legs.map(([label, q]) => `<div class="fv-leg">
             <span class="fl-l">${esc(label)}</span>
             <span class="fl-v">${fmt(q.price, item.dec)}</span>
-            <span class="fl-c ${cls(q.chgPct)}">${sign(q.chgPct)}</span>
+            <span class="fl-c ${chgCls(q, item)}">${chgText(q, item)}</span>
           </div>`).join('') +
         `</div>`;
     }
@@ -104,8 +150,10 @@ function cardHTML(item) {
       </div>`
     : '';
 
-  const liveChip = item.tier === 'fast'
-    ? `<span class="chip live" title="实时档，约 20 秒刷新">实时</span>`
+  // "实时"只给数据本身真的新的指标挂，不再按分级挂。
+  // 以前 tier=fast 就挂实时标，于是 USD/CNY 那种 30 小时前的收盘价也顶着"实时"两个字。
+  const liveChip = fresh && fresh.level === 'live'
+    ? `<span class="chip live" title="数据时间戳在 ${item.tier === 'fast' ? 90 : 240} 秒内">实时</span>`
     : '';
 
   return `<div class="fin-card${isManual ? ' is-manual' : ''}" data-id="${esc(item.id)}">
@@ -188,6 +236,7 @@ function render(panel) {
     `<div class="fin-foot">
       实时档（期货 / 股指 / 汇率 / 金银油）约 20 秒刷新，其余约 120 秒。
       你关掉页面或切走 90 秒后，服务端自动降到省电模式（间隔放大 9 倍），几乎不发请求。
+      卡片右上角的时间是<b>数据自带的时间戳</b>，不是刷新时刻。显示「数据 MM-DD HH:mm」= 该市场已收盘或休市（港股国庆、日股收盘都属此类），不是故障。
       数据源：CNBC / Yahoo Finance / CNN Business / TradingView（欧洲与日本股指期货，约 15 分钟延迟）。延迟报价，仅供观察，不构成投资建议。
     </div>`;
 

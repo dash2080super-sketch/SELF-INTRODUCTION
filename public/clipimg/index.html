@@ -97,7 +97,7 @@
 
 <header class="bar">
   <h1>📌 贴图收藏夹</h1>
-  <div class="hint">在页面任意位置 <b>Ctrl+V</b> 粘贴截图 · 支持拖拽 · 或 <label class="pick">点击选择文件<input id="pick" type="file" accept="image/*" multiple hidden></label></div>
+  <div class="hint"><b>Ctrl+V</b> 粘贴截图（直接按就行，不用先点进来）· 支持拖拽 · 或 <label class="pick">点击选择文件<input id="pick" type="file" accept="image/*" multiple hidden></label></div>
   <div class="stat" id="stat"></div>
 </header>
 
@@ -287,7 +287,15 @@
           body: p.blob,
         });
         if (r.status === 401) { toast('请先登录小破站（会话过期请重新登录）'); return; }
-        if (!r.ok) { failCount++; toast('上传失败（' + r.status + '）'); continue; }
+        if (!r.ok) {
+          // 把服务端说的原因带出来。以前只报状态码，磁盘写不进去（500）和别的问题长得一样，
+          // 排查全靠猜；而当时连成败都不看就喊"收藏完成"，用户以为存进去了，其实一张没落盘。
+          var why = '';
+          try { why = (await r.json()).error || ''; } catch (e) { /* 非 JSON 就算了 */ }
+          failCount++;
+          toast('上传失败（' + r.status + (why ? '：' + why : '') + '）');
+          continue;
+        }
         var entry = await r.json();
         items.unshift(entry);
         okCount++;
@@ -340,21 +348,36 @@
     pick.value = '';
   });
 
-  /* ---------- 启动 ---------- */
-  (async function boot() {
+  async function loadList(silent) {
     try {
-      var r = await fetch('/api/clipimg');
+      var r = await fetch('/api/clipimg', { cache: 'no-store' });
       if (r.status === 401) {
         grid.innerHTML = '<div class="empty">请先登录小破站，再回到本页。</div>';
         return;
       }
+      if (!r.ok) throw new Error('HTTP ' + r.status);
       var data = await r.json();
       items = data.items || [];
       render();
     } catch (e) {
-      grid.innerHTML = '<div class="empty">加载失败，请刷新重试。</div>';
+      // 刷新失败时保留屏幕上已有的列表，别把用户正在看的东西清空
+      if (!silent) grid.innerHTML = '<div class="empty">加载失败，请刷新重试。</div>';
     }
-  })();
+  }
+
+  /* ---------- 外层 billboard 页转发进来的消息 ---------- */
+  // 本页是 iframe，没焦点时外面的 Ctrl+V 只会打在外层文档上、这里收不到。
+  // 外层渲染器（public/js/modules/clipimg.js）会把粘贴/拖入的图片转发进来。
+  window.addEventListener('message', function (e) {
+    if (e.origin !== location.origin) return;
+    var d = e.data;
+    if (!d || d.source !== 'clipimg') return;
+    if (d.kind === 'files' && d.files && d.files.length) handleFiles(d.files);
+    else if (d.kind === 'refresh') loadList(true);
+  });
+
+  /* ---------- 启动 ---------- */
+  loadList(false);
 })();
 </script>
 </body>

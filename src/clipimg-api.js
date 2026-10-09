@@ -25,6 +25,28 @@ function ensureDir() {
   fs.mkdirSync(DIR, { recursive: true });
 }
 
+/**
+ * 启动自检：存储目录必须能写。
+ *
+ * 2026-10-09 就是栽在这儿：目录是 root 建出来的（有人用 root 跑过服务或手动 mkdir），
+ * 而 billboard 以 billboard 用户运行 → 只能读不能写，之后每一次粘贴都 500，
+ * 当时前端还不管成败都喊"收藏完成 ✔"，用户看到的就是"收藏进去了但不显示"。
+ * 与其等用户第一次粘贴才发现，不如启动就吵一声。
+ */
+function probeWritable() {
+  try {
+    ensureDir();
+    const p = path.join(DIR, '.write-test');
+    fs.writeFileSync(p, 'ok');
+    fs.unlinkSync(p);
+  } catch (e) {
+    console.error(`[clipimg] ⚠ 存储目录不可写，粘贴收藏会全部失败：${DIR}`);
+    console.error(`[clipimg] ⚠ 原因：${e.message}`);
+    console.error(`[clipimg] ⚠ 修法：chown -R billboard:billboard ${DIR}`);
+  }
+}
+probeWritable();
+
 function loadIndex() {
   try {
     const list = JSON.parse(fs.readFileSync(INDEX, 'utf8'));
@@ -60,23 +82,29 @@ router.post('/', (req, res) => {
   if (!ALLOWED.has(ext)) {
     return res.status(400).json({ error: 'unsupported ext: ' + ext });
   }
-  ensureDir();
-  const now = new Date();
-  const stamp = now.toISOString().replace(/[-:TZ]/g, '').slice(0, 14);
-  const id = `${stamp}-${crypto.randomBytes(3).toString('hex')}`;
-  const file = `${id}.${ext}`;
-  fs.writeFileSync(path.join(DIR, file), buf);
-  const entry = {
-    id,
-    ext,
-    size: buf.length,
-    ts: now.getTime(),
-    note: String(req.query.note || '').slice(0, 200),
-  };
-  const list = loadIndex();
-  list.push(entry);
-  saveIndex(list);
-  res.status(201).json(entry);
+  try {
+    ensureDir();
+    const now = new Date();
+    const stamp = now.toISOString().replace(/[-:TZ]/g, '').slice(0, 14);
+    const id = `${stamp}-${crypto.randomBytes(3).toString('hex')}`;
+    const file = `${id}.${ext}`;
+    fs.writeFileSync(path.join(DIR, file), buf);
+    const entry = {
+      id,
+      ext,
+      size: buf.length,
+      ts: now.getTime(),
+      note: String(req.query.note || '').slice(0, 200),
+    };
+    // 写文件成功后再落索引；中间任何一步抛错都不改索引，避免出现"有记录没文件"或反过来
+    const list = loadIndex();
+    list.push(entry);
+    saveIndex(list);
+    res.status(201).json(entry);
+  } catch (e) {
+    console.error('[clipimg] 写入失败:', e.message);
+    res.status(500).json({ error: '写入失败：' + e.message });
+  }
 });
 
 router.get('/:id/file', (req, res) => {
@@ -96,9 +124,22 @@ router.delete('/:id', (req, res) => {
   } catch {
     /* 文件已不在也照删索引 */
   }
-  list.splice(i, 1);
-  saveIndex(list);
+  try {
+    list.splice(i, 1);
+    saveIndex(list);
+  } catch (e) {
+    console.error('[clipimg] 索引更新失败:', e.message);
+    return res.status(500).json({ error: '索引更新失败：' + e.message });
+  }
   res.json({ ok: true });
+});
+
+// express.raw 抛的错（最典型是超过 30mb 上限）默认会走 express 的 HTML 错误页，
+// 前端只拿到一个状态码。统一转成 JSON，把原因带回去。
+router.use((err, req, res, next) => {
+  if (!err) return next();
+  console.error('[clipimg] 请求处理失败:', err.message);
+  res.status(err.status || 500).json({ error: err.message || 'upload failed' });
 });
 
 export default router;

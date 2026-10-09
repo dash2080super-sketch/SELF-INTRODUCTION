@@ -757,3 +757,679 @@ JSON 正确 `200 {"ok":true}`；线上 `smoke-test` **30 通过 / 0 失败**。
 
 **拉价失败时**：回退上一次的快照并标 `stale`，前端在价格后面显示一个灰色「旧」字，
 而不是让价格突然变成「—」。
+
+---
+
+## ndxspx · NASDAQ & S&P 加仓决策（2026-09-24 上线）
+
+**是什么**：把投资大师圆桌报告里的多因子加仓系统，做成了 billboard 的一个新 tab「🇺🇸 NASDAQ & S&P 决策」。
+回答三件事：今天能不能加、加哪条腿（SPY / QQQ）、加多少。
+
+**目录**
+
+| 路径 | 作用 |
+|------|------|
+| `/opt/ndxspx/daily_decide.py` | 判定引擎（唯一一份判定逻辑，改规则只改这里） |
+| `/opt/ndxspx/latest.json` | 最新判定结果（前端读它） |
+| `/opt/ndxspx/history.jsonl` | 每次判定追加一行（前端历史表用它） |
+| `/opt/ndxspx/state.json` | CB-2 冷却的持久化状态 |
+| `/opt/ndxspx/config.json` | 可选。覆盖默认参数，不存在就用代码里的 DEFAULT_CONFIG |
+| `/opt/billboard/modules/ndxspx.js` | virtual 模块定义（不建表） |
+| `/opt/billboard/src/ndxspx-data.js` | 取数 + 真刷新 |
+| `/opt/billboard/src/ndxspx-api.js` | `GET /api/ndxspx`（`?refresh=1` 真重跑） |
+| `/opt/billboard/public/js/modules/ndxspx.js` | 前端渲染器 |
+
+**cron**（北京时间，VPS 时区 = Asia/Singapore = UTC+8，与北京一致）
+
+```
+30 8  * * * cd /opt/ndxspx && /usr/bin/python3 daily_decide.py --quiet >> /opt/ndxspx/run.log 2>&1
+30 15 * * * cd /opt/ndxspx && /usr/bin/python3 daily_decide.py --quiet >> /opt/ndxspx/run.log 2>&1
+```
+
+美股收盘是北京时间 04:00；财政部曲线约 02:30 出，Yahoo 点位 08:00 前到位，
+所以 08:30 主跑一遍；15:30 再跑一遍补 CBOE 这种会滞后 1~5 个交易日的源。
+
+**数据源（全免费、无 key、VPS 海外直连）**
+
+| 数据 | 来源 |
+|------|------|
+| 10Y / 2Y / 3M | 美国财政部日度国债收益率曲线 CSV |
+| TIPS 实际收益率 | 美国财政部 real_yield_curve CSV（**2026-09-24 新打通**，之前标「不可得」） |
+| VIX / VXN | CBOE 官方 History CSV |
+| Fear & Greed | CNN dataviz（**必须带 Referer，否则 418**） |
+| ^GSPC / ^NDX / SPY / QQQ / USDCNY | Yahoo chart API |
+
+**PE(TTM) 的处理**：指数级 TTM PE 是付费数据，免费源全废。按 Vic 拍板的
+「基准 PE + 价格递推」：每季度财报后填一次 `base_date` + `pe_spx_base` / `pe_ndx_base`，
+季度内假设 EPS 不变，每天用指数点位递推盈利收益率。超过 90 天没重填，页面黄字告警。
+
+**改参数**：编辑 `/opt/ndxspx/config.json`（只写要覆盖的键），下次 cron 自动生效，不用改代码。
+
+**手跑一次**：`cd /opt/ndxspx && python3 daily_decide.py`（约 25~35 秒）
+
+**回退**：改动前的备份在 `/root/billboard-backup-ndxspx-*.tar.gz`；
+server.js / app.css 另有 `.bak-ndxspx-<时间戳>` 就地备份。
+
+---
+
+## 2026-09-26 新增 tab：🌏 日/德/法宏观（`jdemacro`）
+
+一份自包含静态手册页（日本/德国/法国「恐慌指数」与情绪指标全景），**纯增量，server.js 一行没改**。
+
+### 落位（3 个新增文件）
+
+| 文件 | 作用 |
+|---|---|
+| `/opt/billboard/public/jde-macro/index.html` | 手册本体（48KB，自带完整 `<style>` + 内联 JS） |
+| `/opt/billboard/public/jde-macro/vendor/echarts.min.js` | ECharts 5，**已本地化不走 CDN**（境外机房加载 jsdelivr 不稳，照 GlobalRadar 先例） |
+| `/opt/billboard/modules/jdemacro.js` | virtual 模块定义：order **60**（排最后），virtual:true，不建表 |
+| `/opt/billboard/public/js/modules/jdemacro.js` | iframe 渲染器，src = `/jde-macro/index.html` |
+
+### 为什么不用改 server.js
+
+`publicDir` 的 `express.static` 本来就在 `authGuard` 之后 → **登录保护自动继承**，和 `/etf/index.html` 一个待遇。
+不需要像 GlobalRadar（有 Python 后端）那样手写反代。
+
+**两个坑（下次照抄时注意）：**
+1. `publicDir` 的 static 是 `index: false`，所以 iframe 的 src **必须写全 `/jde-macro/index.html`**，
+   写 `/jde-macro/` 会 404。（`life` 用的是独立目录 + `index:'index.html'`，所以它能用目录形式）
+2. 必须用 iframe，不能 innerHTML 注入：手册的 `<script>` 需要执行（ECharts），
+   且它自带 `.card` / `.tbl` 类名会和 app.css 互相覆盖。
+
+### 验证记录（2026-09-26）
+
+| 检查项 | 结果 |
+|---|---|
+| `/api/modules` | ✅ 16 个模块，jdemacro 排最后，icon 🌏 |
+| 登录后 `/jde-macro/index.html` | ✅ 200，48,497B，text/html |
+| 登录后 `/jde-macro/vendor/echarts.min.js` | ✅ 200，1,034,102B，application/javascript |
+| **未登录**访问同路径 | ✅ 302 → `/login.html`（认证已继承，没有裸奔） |
+| 响应头 | ✅ 无 `X-Frame-Options`、无 CSP，iframe 不被拦 |
+| 回归 index/timing/global-radar/life/api/health | ✅ 全 200 |
+| 内存 | ✅ 458MB 总量，部署后 264MB |
+
+### 回滚
+
+纯新增，删掉 3 个文件 + `systemctl restart billboard` 即可，无残留、无备份依赖。
+
+### 更新页面内容
+
+直接覆盖 `/opt/billboard/public/jde-macro/index.html`（属主 `billboard:billboard`），
+静态资源 `maxAge: 0` + ETag，刷新浏览器即可，不用重启服务。
+
+---
+
+## 2026-09-26 移动端体验优化（含一个存在已久的隐藏 bug）
+
+用 Chromium 模拟 iPhone 14（390×844, isMobile）逐个点开 16 个模块实测后动手。**桌面端零回归**（1440×900 复查）。
+
+### 一、先体检，结论是「站点主体健康，只有 tab 栏是坏的」
+
+16 个模块在 390px 下 `document.scrollWidth` 全部 = 390，**零横向溢出**。
+（drawdown / ndxspx / n225 内部有 10–27 个超宽元素，但都在各自的滚动容器里，不外溢。）
+所以**不要**去动各模块的布局 —— 真正的问题只有一个：tab 栏。
+
+### 二、tab 栏（本次主要修复）
+
+**症状**：390px 下 `.tabs` 只拿到 **212px**，而内容宽 1769px。16 个 tab 里 **14 个在屏外**，
+右侧没有任何提示，等于把后面 14 个模块藏起来了。
+
+**根因**：`.tabs{flex:1}` 是 `flex:1 1 0%`，而 640px 媒体查询里写的是 `width:100%`。
+**flex 项目的 flex-basis（非 auto）优先于 width**，所以那条 `width:100%` 从来没生效过。
+
+**修法**（`public/css/app.css` 末尾新增，不动任何原有规则）：
+- `.tabs{flex:1 0 100%}` —— 用 flex-basis 强制独占一行（topbar 本身已 `flex-wrap:wrap`）
+- 横滑两侧渐隐遮罩：`.can-l` / `.can-r` 两个 class，只在那一侧还有内容时出现
+- `.tab` 缩小内边距与字号，触屏媒体查询 `@media(hover:none)` 再放宽可点区域
+
+`public/js/app.js` 配套：
+- 新增 `syncTabsEdge()` —— 维护 can-l / can-r（绑定 scroll + resize）
+- 新增 `focusTab(id)` —— `switchTo` 里调用，`scrollIntoView({inline:'center',block:'nearest'})`
+  把当前 tab 滚进视野（从 URL hash 直接进来时尤其必要）
+
+**效果**：tab 栏 212px → **366px**（占满一行），一屏可见 2 个 → 3 个，右侧有渐隐提示，
+切到最后一个 tab 会自动滚到可见位置。
+
+### 三、iframe 高度（5 个内嵌模块）
+
+`etf / globalradar / jdemacro / life / timing` 五个渲染器原本都是 `height: calc(100vh - 140px)`
++ 各自写死的 `minHeight`（560–760px）。两个问题：
+1. 移动端 topbar 会折行变高（实测 **111px**，不是 56px），140px 的预留不够；
+2. **iOS Safari 的 100vh 取「地址栏收起」的大视口**，会让 iframe 底部被地址栏盖住。
+
+改为按实测 topbar 高度算 + `100dvh` 修正（不支持 dvh 的浏览器忽略第二行，保留 vh 兜底）：
+
+```js
+const reserve = (document.querySelector('.topbar')?.offsetHeight || 56) + 84;
+frame.style.height = `calc(100vh - ${reserve}px)`;
+frame.style.height = `calc(100dvh - ${reserve}px)`;
+```
+
+`minHeight` 统一降到 480px —— 原来的 760px（life）在移动端比可视区还高，必然顶出屏幕。
+
+### 四、手册页 /jde-macro/ 响应式
+
+390px 下原本横向溢出到 **813px**。根因是 12 张表里最宽的 785px（td 内长句/长 URL 撑开列），
+而 table 没有滚动容器，直接把 `.wrap` 顶宽。
+
+- 12 张表全部包进 `<div class="tw">`（`overflow-x:auto`，容器负责横向滚动）
+- `@media(max-width:720px)`：收窄 `.wrap` padding、各级字号、th/td padding
+- `code{word-break:break-all}` —— 长 URL 必须能断
+- 图表：`grid.left` 130px 在 390px 屏上吃掉三分之一绘图区 → `fitChart()` 窄屏收到 92px 并降字号；
+  顺带补了 `resize` 监听（**原版没有**，转屏后图表不跟着变）
+- `#mainChart` 内联 400px → 窄屏 320px（内联样式需 `!important` 才盖得住）
+
+结果：**390 → 390，零溢出**；桌面端图表仍为 400px，未被影响。
+
+### 五、⚠ 顺手修掉一个存在已久的隐藏 bug（重要）
+
+**症状**：首页控制台报 `SyntaxError: Invalid or unexpected token`，位置 index.html 第 8 行。
+
+**根因**：`server.js:157` 对整份 HTML 做
+`html.replaceAll('__ASSET_V__', ASSET_V)`，
+而 index.html 第 8 行是 `<script>window.__ASSET_V__='__ASSET_V__';</script>` ——
+**变量名本身也被替换**，实际下发的是：
+
+```html
+<script>window.27dceeaa='27dceeaa';</script>   <!-- 非法标识符 -->
+```
+
+**为什么这个 bug 很要命**：不止是控制台报错。脚本解析失败 → `window.__ASSET_V__` 从未被赋值 →
+`app.js` 里 `window.__ASSET_V__ || '0'` 永远拿到 `'0'` → **所有模块都以 `?v=0` 加载**。
+后果是改了任何模块文件，浏览器都照旧 URL 命中缓存，**用户刷新也拿不到新版**。
+（本次的 iframe 高度修复就受影响。）
+
+**修法**（不碰 server.js 的替换逻辑，只改两个前端文件）：
+- `index.html`：删掉那行内联脚本（占位符现在只剩 css link 与 app.js src 两处，都在「值」的位置，替换正确）
+- `app.js:130`：`const v = new URL(import.meta.url).searchParams.get('v') || '0';`
+  —— app.js 本身就是 `<script type="module">`，`import.meta.url` 里带着 `?v=<hash>`。
+
+**验证**：模块请求已变为 `/js/modules/todos.js?v=774970ab`（此前是 `?v=0`），首页零 JS 报错。
+**别再改回内联脚本那种写法。**
+
+### 六、顺手清掉一个 404
+
+`/opt/life-board/index.html:4` 有 `<script src="/page/page_comm/inject.js">` ——
+文档平台导出页面时残留的注入标签，`/page/` 目录在服务器上从来不存在，
+每次打开「生活工作台」都白跑一次 404。已删除（备份 `index.html.bak-inject404-20260926-152048`）。
+
+### 七、改动清单与回滚
+
+| 文件 | 改动 | 备份 |
+|---|---|---|
+| `public/css/app.css` | 末尾追加移动端 tab 栏段落（不改原有规则） | `.bak-mobile-20260926-151444` |
+| `public/js/app.js` | +syncTabsEdge / +focusTab / 版本号改读 import.meta.url | 同上 |
+| `public/index.html` | 删掉那行非法的内联版本号脚本 | 同上 |
+| `public/jde-macro/index.html` | 表格滚动容器 + 窄屏 CSS + 图表 fitChart | 同上 |
+| `public/js/modules/{etf,globalradar,jdemacro,life,timing}.js` | iframe 高度改 dvh + 实测 topbar | scp 覆盖，原件见本地 staging |
+| `/opt/life-board/index.html` | 删残留脚本标签 | `.bak-inject404-20260926-152048` |
+
+回滚：`cp <备份> <原文件> && systemctl restart billboard`。
+
+### 八、⚠ 用户端需要做一次硬刷新
+
+因为修好之前一直下发 `?v=0`，你手机浏览器里**很可能缓存着旧的 app.js / 模块文件**。
+新版 CSS 会自动更新（`/css/app.css?v=<hash>` 一直是对的），但 JS 模块要等这一版生效后才会换 URL。
+Safari 上如果 tab 栏还是老样子，下拉刷新一次，或到「设置 → Safari → 清除历史记录与网站数据」。
+
+---
+
+## 2026-09-26 全站体检（第 2 轮）：数据源断供 + 一处误导性时间戳
+
+Vic 要求「仔细检查，认真修复」。按五层扫：服务/端口 → 路由/资源 → 浏览器运行时 → 数据源健康 → 数据准确性。
+**结论：站点结构是健康的（16 模块零控制台报错、零失败请求、路由全 200），问题全在「数据来源」这一层。**
+
+### 一、最要命的：波段工作台（swing）整个模块拿不到行情
+
+**症状**：6 只标的现价 / 昨收 / 涨跌幅**全是 null**，表格整片显示「无行情」，顶部挂一个 `HTTP 502`。
+
+**根因**：东方财富从境外 IP 全通道封禁。实测这台机器（新加坡）：
+
+| 主机 | stock/get | ulist.np |
+|---|---|---|
+| `push2.eastmoney.com` | 502 | 502 |
+| `push2delay.eastmoney.com` | 502 | 502 |
+
+但同一个问题**在 2026-09-25 晚就已经发生了** —— `src/etf-data.js` 的注释里明确记过
+（「push2/push2delay 的 clist、stock/get 全部 502」），ETF 模块当时就改成腾讯为主源活了下来。
+**只有 swing-data.js 没跟着改**，仍然只认东财，所以它单独挂了。
+
+**一个必须记住的坑**：修的时候我一度以为「给 EM_HOSTS 加数字子域（1.push2 / 2.push2 …）」就够了 ——
+15:38 实测那批子域确实全部 200，`ulist.np` 也能正常返回真实数据。
+**但 15:50 再测，全部变成 timeout（000）。12 分钟就失效了。**
+所以：**东财的子域可用性是完全飘忽的，不能作为唯一依赖。** 只打补丁必然再次翻车。
+
+**实际修法**（`src/swing-data.js`，东财优先、腾讯兜底）：
+1. `EM_HOSTS` 补上数字子域当第三～五顺位（裸域保留在前，万一日后放开仍然优先走官方延时节点）
+2. **新增 `txBatch()`** —— 腾讯 `qt.gtimg.cn` 批量行情，返回结构与 `fetchBatch` 完全同构
+   （内部把带小数的报价串反乘 `10**decimals`，调用侧一行不用改）
+3. **新增 `txFetchOne()`** —— 单只兜底，主要为了拿可信的小数位
+   （东财那个 `f59` 已经问不到了；腾讯反而更直接：报价串 `"2.118"` 一看就是 3 位小数）
+4. 批量失败 → 自动切腾讯，并在响应里加 `source` 字段记录这一轮是谁喂出来的
+
+**为什么腾讯是可信替代**（交叉验证，两点同价）：
+贵州茅台 1237.00 / 腾讯控股 436.600 / 比亚迪 84.34 —— 东财与腾讯小数点后完全相同。
+小数位也都对：ETF 与港股 3 位、A 股 2 位。
+
+**修复后的实际效果**（截图见对话）：6 只标的全有价，"贵州茅台 → 到买点"、"日经225ETF → 到卖点" 正确触发。
+⚠ 注意：修复前因为价格是 null，信号全被压成 `hold` —— 这是**对的**，code 里有注释说明
+（`null <= 420` 在 JS 里是 true，不拦住的话整屏会齐刷刷变成「到买点」，那是会让人真下单的假信号）。
+所以这次不是"信号算错"，是"根本没数据"。
+
+### 二、顺手修掉我自己引入的文案不一致
+
+swing 表格底部原本写死「数据由服务端抓取自**东方财富**延时节点」。改成腾讯兜底后这句话就过时了。
+已改为读响应里的 `source` 字段动态显示（`public/js/modules/swing.js` 的 `legendHTML()`）。
+
+### 三、ETF 看板：一处很容易骗到人的时间戳
+
+**症状**：页面顶上写「**更新于 15:33:04**」，但同一屏的「行情时间」是 **2026/9/24 16:14:58**。
+
+**根因**：`setStat('更新于 ' + new Date()...)` 用的是**当前时刻**，跟行情时间毫无关系。
+只是"这一刻去问了一次服务器"。休市、节假日、上游没更新的时候，页面照样显示一个崭新的时间。
+
+**这个错觉为什么要紧**：ETF 的溢价率、分位、K 线、区间表现全都是用那份`旧数据`算出来的。
+顶部一个"刚刚更新"的时间，会让人以为整套数字都是新鲜的。
+
+**修法**：新增 `stampStat()`，显示**行情自己的时间戳**，并在异常陈旧时明说：
+```
+行情 09/24 16:14 · 腾讯
+```
+阈值取 **72 小时**：正常周末跨度（周五 15:00 收 → 周一 9:30 开）约 66.5 小时，刚好不误报；
+国庆、春节这种长假一定会亮出「滞后 N 天」。
+
+### 四、⚠ 一次我自己的误判（记录下来，别重复踩）
+
+体检时我看到 ETF 显示 9/24 数据、而当天是 9/26，第一反应是「数据滞后一天，bug」。
+**核实后推翻**：2026 年中秋 A 股休市 **9/25（五）–9/27（日）**，最后一个交易日就是 9/24。
+腾讯和东财两个源都停在 9/24 —— **一致即是正确**，这天本来就该是 9/24。
+教训：判断"数据陈旧"前，先查交易日历，别拿自然日当交易日。
+
+### 五、globalradar 的一个 404
+
+`/global-radar/favicon.ico` 404 —— Python 后端不处理这个路径，浏览器每次开页面都白跑一次。
+已加 `static/favicon.svg` + `<link rel="icon">`（`static/index.html`）。
+**顺带更正**：billboard 主站本来就有 inline emoji 图标（`<link rel="icon" href="data:image/svg+xml,...📌">`），
+不会去请求 `/favicon.ico`。我用 curl 测出来的那个 404 是假象，主站**不需要**改。
+
+### 六、数据准确性核验（独立源交叉）
+
+| 指标 | 站点值 | 独立源 | 判定 |
+|---|---|---|---|
+| VIX | 14.87 | Yahoo `^VIX` 14.87 | ✅ 一致 |
+| 纳指100 | 30,608.13 | Yahoo `^NDX` 30,608.13 | ✅ 一致 |
+| 美债 10Y | 5.17（财政部平价收益率口径，9/25） | Yahoo `^TNX` 5.184 | ✅ 口径差 1.4bp，正常 |
+| 日经225 | 66,364.2（9/25） | globalradar 66,363.98 | ✅ 一致 |
+| CNN F&G | 37（fear） | 直连 CNN 端点 37 / fear | ✅ 一致 |
+| finance 35 项 | 全部 | — | ✅ 时效均为 0h，无陈旧项 |
+
+实测过程里 **CNN 那个端点不带 `Referer` 会返回 418（反爬）**，带上是 200 —— `fng_bark.py` 一直是带对的。
+
+**一处口径差异（不是 bug，但会影响决策，记下来）**：
+「日经225 距高点回撤」两个模块给的值不同：
+- `/api/drawdown`：52 周高 **72831.73** → 回撤 **-8.88%**（Yahoo `^N225` 的 `fiftyTwoWeekHigh`，**盘中**最高价）
+- `/api/n225`：一年高点 **72366.34** → 回撤 **-8.29%**（`max(最近 250 个交易日**收盘价**)`）
+
+盘中高点必然 ≥ 最高收盘价，所以 72831.73 > 72366.34 是数学必然，两个都对。
+但 n225 的**金字塔加仓档位是由这个回撤决定的**，0.59pp 的差可能刚好压过某一档的门槛。
+**没有擅自统一**（改任何一边都会动到既有策略行为），留给 Vic 决定要哪个口径。
+
+### 七、端口与安全
+
+**端口配置全部正确，没有该开未开的**：
+
+| 端口 | 绑定 | 用途 | 判定 |
+|---|---|---|---|
+| 3000 | 127.0.0.1 | billboard | ✅ 只在本机，靠 Tunnel 暴露 |
+| 8787 | 127.0.0.1 | globalradar | ✅ 同上 |
+| 20241 | 127.0.0.1 | cloudflared metrics | ✅ |
+| 22 | 0.0.0.0 | SSH | 需开放 |
+| 443 | * | xray VLESS REALITY | 需开放 |
+
+`ufw` active，默认 deny incoming，只放行 22 / 443。Tunnel 指向 `http://127.0.0.1:3000`。
+**认证继承正确**：未登录访问 `/index.html`、`/jde-macro/index.html` → 302；`/api/*` → 401。
+
+**这次新装的加固：fail2ban**
+- 近 24h 有 **719 次 SSH 爆破尝试**（TOP 来源 31.77.19.10 / 195.178.110.227 / 163.179.39.202）
+- 但 `passwordauthentication no` 已生效 → **爆破不可能成功**，风险等级低
+- 真正的问题是日志被刷爆 + 每轮 fork 一次 sshd，对 512MB 机器是白耗
+- 已安装 fail2ban + `/etc/fail2ban/jail.d/sshd.local`（`maxretry=5 / findtime=10m / bantime=1h`，刻意保守防误封）
+- `PermitRootLogin` **保持不动**：密码认证已关，root 只能密钥登录，现状已安全；改它有微小锁死风险，不值当
+
+### 八、遗留事项（未动，需要 Vic 决定）
+
+1. **服务器需要重启**（内核从 6.8.0-139 起就挂着 reboot-required）。会中断约 1 分钟，
+   所有服务都是 enabled 会自动回来，但**重启时机由 Vic 定**。
+2. 23 个待安装更新（含 1 个安全更新）。
+3. 上面第六节那个日经回撤口径二选一的问题。
+
+### 九、改动清单与回滚
+
+| 文件 | 改动 | 备份 |
+|---|---|---|
+| `src/swing-data.js` | EM_HOSTS 补数字子域 + 新增 txBatch/txFetchOne 腾讯兜底 + source 字段 | `.bak-fnq-20260926-154449` |
+| `public/js/modules/swing.js` | 数据源文案改为动态读 `source` | `.bak-srcnote-20260926-160621` |
+| `public/etf/index.html` | 新增 `stampStat()`，状态栏改显示行情时间 | 本地 staging 有 orig |
+| `globalradar/static/index.html` + `favicon.svg` | 补 favicon link（新增文件） | `.bak-fav-20260926-155310` |
+| `public/index.html` | 补 favicon link（**实际未改动**，主站已有） | `.bak-fav-*` |
+| `/etc/fail2ban/jail.d/sshd.local` | 新增（fail2ban 配置） | 新增文件 |
+
+回滚：`cp <备份> <原文件> && systemctl restart billboard [globalradar]`。
+fail2ban 若要去掉：`systemctl disable --now fail2ban`。
+
+## 2026-09-26 17:45 系统更新 + 重启 + 回撤口径统一（Vic 授权）
+
+### 1. 系统更新（23 个，全部装完）
+- 第一批 apt upgrade 装 19 个；剩 apparmor / libapparmor1 / libaudit-common / libaudit1 是 phased update 挡住，
+  用 `apt-get -y -o APT::Get::Always-Include-Phased-Updates=true upgrade` 补齐。最终 upgradable = 0。
+- 含安全更新 libpcap0.8t64（noble-security）、nodejs 22.23.3、cloudflared 2026.9.3。
+- 回滚：apt 装回去不现实，出问题只能 `apt-get install <pkg>=<旧版本>`。
+
+### 2. 重启
+- `/sbin/reboot` → 内核 6.8.0-142-generic 生效，/var/run/reboot-required 已清除。
+- 重启后全部 active：billboard / cloudflared / xray / globalradar / fail2ban。
+- 端口仍是 127.0.0.1:3000、127.0.0.1:8787、127.0.0.1:20241，对外只有 22 / 443（xray）。
+
+### 3. 日经回撤口径：统一为 250 交易日收盘高（决策人 Vic 授权我自己定）
+**决定**：全站统一用「最近 250 个交易日收盘最高价」，弃用 Yahoo 的 fiftyTwoWeekHigh（52 周**盘中**最高）。
+
+理由（三条）：
+1. 加仓档位是收盘后决策、次日开盘执行，盘中高价是当日不可成交的价格，拿它算回撤会系统性虚高
+   （日经实测：盘中高 72831.73 → -8.88%，收盘高 72366.34 → -8.29%，差 465 点 / 59bp）。
+2. 虚高会让回撤在档位边界上过早跨档（PYRAMID: -10%档3.0 / -6%档2.0 / -3%档1.5），
+   对求稳偏好是错方向的误差——本来该保守，结果跳进更激进那一档。
+3. /api/n225 一直是 250 日收盘口径，两个接口给出两个数是实打实的自相矛盾。
+
+改动：
+- `src/drawdown-data.js`：RANGE_MONTHS 3 → 12（3 个月日线算不出一年高点，必须拉满 250 日）；
+  fetchOne 新增 `peak250` / `peak250Date`（收盘序列 slice(-250) 取 max）；
+  `high52` 保留但注释标明「盘中口径，仅参考，不用于回撤」。
+- `public/js/modules/drawdown.js`：d52 → d250 改用 peak250；卡片文案「距 52 周高点」→「距 250 日收盘高」；
+  口径说明新增一条解释为什么不用盘中高。
+- 必须删 `data/drawdown-cache.json`（旧缓存只有 3 个月日线，不删会算出 3 个月的高当一年高）。
+
+验证：7 个指数全部拿到 ~250 行日线；日经 peak250 = 72366.34 @ 2026-06-25 → -8.29%，
+与 /opt/nikkei/latest.json 的「一年高点 72366.34 / 回撤 -8.29%」逐字一致。
+备份：`.bak-20260926-174526`（两个文件各一份），回滚 = cp 回来 + systemctl restart billboard。
+
+### 4. 排查中发现的残留（未擅自启用）
+- `/etc/systemd/system/nikkei225-monitor.service`：**disabled + inactive(dead)**。
+  它是 Type=simple + Restart=always 的常驻旧方案，已被 cron 里 6 条
+  `/opt/nikkei/daily_advice.py --slot am/pm` 取代。**不要 enable**，否则会和 cron 重复触发 Bark 推送。
+- etf-monitor / fng-bark 不在 systemd，是 cron 定时任务（见 crontab），ps 里看不到进程属正常：
+  - `5 15 * * 1-5` monitor_515450.py
+  - `15 15 * * 1-5` monitor_nikkei225.py
+  - `30 8 * * *` fng_bark.py（每天）
+  - 周六周日 `1-5` 的任务不跑，所以日志停在周五 9/25 是正常现象，不是挂了。
+
+## 2026-09-27 07:00 xray(VPN) 速度/延迟调优 —— 诊断与改动
+
+Vic 反馈 VLESS+Reality 速度慢、延迟大。**结论：两个瓶颈，一个已修、一个修不了。**
+
+### 已修：TCP 窗口是速度天花板
+- 原 `net.core.rmem_max` / `wmem_max` = 212992（208KB）。本地→VPS RTT 实测 420ms，
+  吞吐上限 = 208KB / 0.42s ≈ **4Mbps**。而 VPS 出网实测 **259MB/s（约 2Gbps）**，带宽根本不是瓶颈。
+- 改动 `/etc/sysctl.d/99-xray-tune.conf`（新文件）：
+  `rmem_max` / `wmem_max` → 8MB；`tcp_rmem` / `tcp_wmem` max → 8MB；
+  `tcp_slow_start_after_idle=0`；`tcp_mtu_probing=1`；`vm.swappiness=10`（458MB 内存已用 171MB swap）。
+- 生效方式：`sysctl --system`，不需要重启任何服务。
+- **回滚**：`rm /etc/sysctl.d/99-xray-tune.conf && sysctl --system`
+- xray 配置微调（备份 `config.json.bak-20260927-063245`，已 `run -test` 通过 Configuration OK）：
+  freedom.domainStrategy=UseIPv4、inbound sockopt tcpNoDelay + tcpKeepAliveIdle=60、
+  新增 dns 段（1.1.1.1 / 8.8.8.8 / localhost，UseIPv4）。重启 xray 后 443 正常。
+- 确认无需改：flow=xtls-rprx-vision 已开、reality target www.bing.com（1.6ms）、BBR+fq 已开、xray 26.3.27
+
+### 修不了：DO 新加坡对联通/电信绕美国
+Vic 出口 IP `163.179.39.157`（中国联通）。traceroute 关键跳：
+`219.158.96.26`（联通国际出口，200ms）→ `207.45.219.8`（美国，250ms）→ `180.87.151.40`（DO 骨干，410ms）。
+反向 mtr 走 Telia `195.219.x`（美国）也是绕。**双向绕美**。
+
+★ **同一机房三网差 8 倍**（VPS 侧实测，目标均为非 anycast 真实机房）：
+| 运营商 | 目标 | RTT | 路径 |
+|---|---|---|---|
+| 移动 | 211.136.192.6 | **38.5ms** | CMI 直连 `223.120.x` ✅ |
+| 联通 | 61.135.169.125 | **311ms** | 绕美国 Telia ❌ |
+| 电信 | 202.96.209.5 | **375ms** | 绕美国 HE `66.198.x` ❌ |
+
+→ 换机房方向明确：需要 **AS9929 / AS10099**（联通精品线路）。移动反而是直连。
+→ 待 Vic 验证：① 手机 4G/5G（若移动卡 → 快 8 倍）② IPv6
+   （VPS 有 `2400:6180:0:d2:0:3:21ec:e000`，VPS 走 IPv6 到阿里 DNS 仅 32.6ms，
+   暗示 IPv6 路径好得多；若成立则零成本解决，改双栈即可）。
+
+### 现场其他发现
+- Vic 家是**双 NAT**：192.168.50.1 → 192.168.1.1 → 联通 CGNAT 10.180.192.1。建议内层路由器改 AP/桥接模式。
+- 联通是 **CGNAT**（无公网 IPv4），运营商 NAT 对 UDP 会话老化快 → **Hysteria2 方案已降权**。
+
+---
+
+## 2026-10-01 23:45 — finance 看板：新鲜度显示口径修正 + 两处上游字段坑
+
+### 起因
+Vic 反馈"finance 板块有些数据根本不是实时的"。逐项验证（美股盘中 15:22 UTC 取样）：
+站点 `/api/finance` 快照 → 服务端直连 CNBC 看全字段 → 独立源交叉
+（CBOE 官方延迟报价 / 美国财政部日收益率 / ECB frankfurter / Nasdaq API / TradingView scanner / Yahoo）。
+**结论：数值几乎全真，CNBC 这个源很干净；坏的是"新鲜度"这套展示逻辑。**
+
+### 缺陷 1：新鲜度按"服务端取数时刻"算，等于在骗人（主因）
+`public/js/modules/finance.js` 的 `freshness()` 用的是 `item.age = now - rec.at`（服务端什么时候取的数），
+不是数据自带的时间戳。于是：
+| 指标 | 真实数据龄 | 改前页面显示 |
+|---|---|---|
+| USD/CNY | 29.9 小时 | 「刚刚」+ 「实时」chip（它是 fast 档） |
+| 恒生指数 | 39.4 小时 | 「刚刚」 |
+| SKEW | 18.4 小时 | 「刚刚」 |
+| 日经 / TOPIX 现货 | 8.6 / 8.9 小时 | 「刚刚」 |
+| DAX、TOPIX 期货（TradingView） | `time` 字段是 null，源本身 15 分钟延迟 | 「刚刚」 |
+
+**修法**：`src/finance-data.js` 的 `compose()` 新增 `dataAt` / `dataAge`（按各腿自带时间戳算），
+前端改用它。多腿指标取哪个时间戳的规则：
+- 默认取**最新**那条腿（各腿都新鲜时它就是答案）
+- 若最旧与最新的腿差 **30 分钟以上**，说明有条腿明显掉队（通常是那个市场已收盘：
+  日经现货停在 15:45 JST、同一张卡的 CME 期货还在跑）→ 按**最旧**算，不能拿活着的腿掩盖停了的腿
+
+阈值也放宽了一圈，因为上游有自己的推送节奏，按刷新周期卡会误判：
+- live：fast ≤ 90s / slow ≤ 240s（原来 45 / 200；CNBC 金价约 60 秒一跳，会被打成"不实时"）
+- aging：≤ 30 分钟（Yahoo 的 VIX 家族约 15 分钟推一次，CNBC 期货腿比现货慢几分钟）
+- old：> 30 分钟 → 直接显示「数据 MM-DD HH:mm」
+- "实时" chip 不再按 tier=fast 挂，改成按 `freshness().level === 'live'` 挂
+
+### 缺陷 2：美债 2Y 涨跌幅符号是反的（上游字段坑）
+CNBC `US2Y`：`last 4.81%`、`previous_day_closing 4.887%`、`change -0.077`，
+但 `change_pct` 返回 **+0.1484%**（正确应为 -1.58%）。财政部官方 9/30 的 2Y = 4.88 → 实际 -7bp。
+同组 3M / 5Y / 10Y / 30Y 的 change 与 change_pct 都自洽，**只有 2Y 坏**，所以换源躲不掉。
+
+**修法**：`fetchCnbc()` 里不再信任上游的 `change_pct`。只要 `change` 和 `previous_day_closing`
+两个基础字段都在，就自己算 `(change / previous_day_closing) * 100`；缺任一字段才回落上游值。
+（对全组回算验证过：3M/5Y/10Y/30Y/SPX/VIX/黄金/BTC 与上游值一致到小数点后 4 位，只有 2Y 被纠正。）
+
+### 缺陷 3：CAC 40 期货是死腿
+目录里声明 `{ label: '期货', cnbc: '@FCE.1' }`，CNBC 对该符号返回 `code=None`、字段全空；
+取数器拿不到就不写 store → 这条腿**静默消失**，页面上没有任何报错。
+TradingView 的 `EURONEXT:CAC1!` 也取不到。
+**修法**：撤掉这条腿，CAC 卡片只留现货，`srcNote` 与注解里写明"期货源已失效，暂缺"，
+并在目录里留注释：要补期货先读 OPS-NOTES，别把死符号直接加回来。
+
+### 缺陷 4：收益率涨跌用相对百分比，会读错一个数量级
+卡片写「10Y 5.272 −0.40%」，那是收益率的**相对**变化（-2.1bp），不是 -40bp。
+**修法**：目录给 ust / jgb / eugb 加 `chgUnit: 'bp'`，`compose()` 透传该字段，
+前端新增 `chgText()` / `chgCls()`，bp 模式下显示 `chg * 100` 的基点值。
+
+### 改动清单与备份（回滚直接 cp 回去）
+| 文件 | 备份 |
+|---|---|
+| `src/finance-catalog.js` | `.bak-fresh-20261001-234526` |
+| `src/finance-data.js` | `.bak-fresh-20261001-234526`、`.bak-fresh2-<部署时间戳>` |
+| `public/js/modules/finance.js` | `.bak-fresh-20261001-234526`、`.bak-fresh2-…`、`.bak-fresh3-20261001-235121`、`.bak-fresh3-20261001-235214` |
+
+服务端文件改完 `systemctl restart billboard`；前端文件刷新即可。
+
+### 验证数据（改后，浏览器实测 35 张卡、零控制台错误、上游失败 0 次）
+- 美债曲线：`3M -3.9bp | 2Y -8.7bp | 5Y -6.6bp | 10Y -3.8bp | 30Y -2.1bp`（2Y 已由 +0.14% 纠正为负值）
+- USD/CNY → 「数据 09-30 17:31」，无"实时"标；恒指 → 「数据 09-30」；SKEW → 「数据 10-01 05:00」
+- 日经 → 「数据 10-01 14:45」、TOPIX → 「数据 10-01 14:30」、KOSPI → 「数据 10-01 19:05」、台股 → 「数据 10-01 13:33」
+- CAC 只剩「现货」一条腿
+- 仍挂"实时"的：信用/广度/BTC/VIX/VIX期限结构/SPX/NDX/SOX/NVDA/美债/德英债/USDJPY/DXY/黄金
+- etf / swing 面板复测：etf 面板是 iframe（innerText 为 0 属正常），`/api/etf/snapshot` 与 `/api/swing/quotes` 均 200 且有数据
+
+### 顺带发现（本次未修，与改动无关）
+`journalctl -u billboard` 里持续报
+`[drawdown] 磁盘缓存写入失败: EACCES: permission denied, open '/opt/billboard/data/drawdown-cache.json'`
+—— 文件权限问题，drawdown 的磁盘缓存一直没落盘（每次重启都要重新拉）。要修的话查该文件的属主与
+billboard 服务运行用户是否一致。
+
+### 校验用独立源（下次复核直接抄）
+- CNBC 批量：`https://quote.cnbc.com/quote-html-webservice/restQuote/symbolType/symbol?symbols=<pipe分隔>&requestMethod=itv&noform=1&partnerId=2&output=json`
+- CBOE 官方：`https://cdn.cboe.com/api/global/delayed_quotes/quotes/_VIX.json`（curl 要加 `-L`）
+- 财政部日收益率：`https://home.treasury.gov/resource-center/data-chart-center/interest-rates/daily-treasury-rates.csv/2026/all?type=daily_treasury_yield_curve&field_tdr_date_value=2026&page&_format=csv`（日期 MM/DD/YYYY，文件乱序要排序）
+- ECB：`https://api.frankfurter.dev/v1/latest?base=USD&symbols=CNY,JPY,GBP,EUR`
+- Nasdaq：`https://api.nasdaq.com/api/quote/NDX/info?assetclass=index`（`isRealTime=false`，15 分钟延迟）
+- TradingView：`https://scanner.tradingview.com/symbol?symbol=<X>&fields=close,change,currency,description,update_mode&no_404=true`
+- ⚠ **Yahoo 从 Mac 直连被拒**（返回 sad-panda HTML），要从 VPS 打；stooq 从 Mac 也 404。
+- ⚠ **别用 Yahoo `BZ=F` 校 Brent**：它 9/30 收 103.53 是换月拼接的假值，真实昨收 98.03。
+  正确校准点是 CNBC `@LCO.1` 与 TradingView `ICEEUR:BRN1!`（两者互相印证 +3.8%）。
+
+### 非缺陷，别当 bug 再查一遍
+- 恒指停在 9/30：香港国庆休市。SKEW 停在 9/30 17:00 ET：CBOE 收盘后才发布当日值。
+- 日经 / TOPIX / 台股时间戳是当地收盘时间；KOSPI 的 20:05 KST（收盘后）是 CNBC feed 自带。
+- TOPIX 期货 -1.45% 而现货 +0.57%：现货是 10/1 日盘收盘，期货现在跑 10/2 夜盘，本来就不是一个交易日。
+- CNN F&G 出现 27.1142857… 这种无限小数：是 7 个分项的均值，正常。
+- USD/CNY 显示 6.7045 与 ECB 当日参考汇率完全一致 —— 值是对的，只是 CNBC 的 `last_time` 不可信。
+
+---
+
+## 2026-10-02 00:08 — drawdown：磁盘缓存权限修复 + 日股"当前价落后一天"修复
+
+### A. 磁盘缓存 EACCES（2026-09-26 起一直在报）
+**根因**：`data/drawdown-cache.json` 属主是 `root:root`、权限 644，而 billboard 服务以 `billboard`
+用户运行（`billboard.service` 里 `User=billboard`）→ 能读不能写。
+文件是 2026-09-26 17:49 有人用 root 跑过一次进程时留下的。
+**影响**：`writeDisk()` 一直静默失败（只 `console.warn`，不抛），所以**每次重启都要重新拉全部上游**，
+磁盘缓存形同虚设。不是正确性问题——`readDisk()` 有 `DISK_MAX_AGE = 12h` 保护，过期就不读。
+
+**修法**：`chown billboard:billboard` + `chmod 664`，并把 `data/` 目录也统一成 `billboard:billboard 775` 兜底。
+顺手扫了全树：`find /opt/billboard -not -user billboard` 出来的其余条目都是只读源码（644 全员可读），
+服务不需要写，不用动。备份 `data/drawdown-cache.json.bak-20261002-000824`。
+验证：`/api/drawdown?refresh=1` 后文件 mtime 变成 2026-10-02 00:08，属主 billboard，日志近 20 分钟 EACCES 计数 0。
+
+### B. 日股当前价落后一天，回撤算错 3 个百分点（比 A 严重）
+修 A 时顺手核了新缓存的内容，发现 **Yahoo 的 `^N225` 日线数组没有当天的那根**：
+`meta.regularMarketPrice` 已经是当日收盘 68,956.72，但 `indicators.quote[0].close` 最后一根还停在
+09-30 的 66,753.72（`^NDX` / `^GSPC` 有当天那根，只有日股落后）。`1306.T`(TOPIX) 同样。
+
+前端 `metrics()` 里 `const last = closes[closes.length - 1]` 直接拿最后一根当"当前价"，于是：
+| 标的 | 改前（错的） | 改后（对的） |
+|---|---|---|
+| 日经 225 | 66,753.72 → 距 250 日收盘高 **-7.76%** | 68,956.72 → **-4.71%** |
+| TOPIX | 431.5 → -1.55% | 434.4 → **-0.78%** |
+
+**这个量级会直接跨过加仓档位边界（-10% / -6% / -3%）**：-7.76% 落在"-10%→-6%"区间，
+-4.71% 落在"-6%→-3%"区间 —— 按错的数字会跳进更激进那一档，对求稳偏好是错方向的误差。
+
+**修法（口径要守住）**：
+1. `src/drawdown-data.js` 的 `fetchOne()` 新增 `lastPrice / lastDate / lastIsNewer / lastChgPct`：
+   `meta.regularMarketTime` 的日期 > 日线最后一根的日期时，用 `meta.regularMarketPrice` 当当前价。
+   **只补分子**。`peak250` 仍然只扫收盘序列，盘中价不许污染分母（这条是本站既定口径，别破）。
+2. `public/js/modules/drawdown.js` 的 `metrics()` 用 `idx.lastPrice` 当当前价（缺失回落旧逻辑）。
+3. `slice()` 里：当日线缺当日那根时，把 `lastPrice` 接到序列尾巴上。不做的话连涨/连跌会漏掉今天、
+   累计涨幅的基准会错一天 —— 实测修复前日经显示"连涨 1 天 累计 +5.31%"（今天其实只有 +3.30%）。
+   修完是"连涨 2 天 累计 +5.31%"（09-30 +1.94% + 10-01 +3.30%），对得上。
+
+### 改动清单与备份
+| 文件 | 备份 |
+|---|---|
+| `data/drawdown-cache.json` | `.bak-20261002-000824`（修权限前），修 B 时又整个删掉让服务重建 |
+| `src/drawdown-data.js` | `.bak-lastprice-20261002-0015xx` |
+| `public/js/modules/drawdown.js` | `.bak-lastprice-20261002-0015xx`、`.bak-streak-20261002-001646` |
+
+### 验证（浏览器实测，零控制台错误）
+DAX -6.14% / CAC -10.21% / FTSE -4.42% / NDX -1.29% / SPX -2.11% / **日经 -4.71%** / **TOPIX -0.78%**
+（距 250 日收盘高口径）。日经最新价 68,956.72 +3.30%、最新交易日 2026-10-01 —— 与 CNBC 的 +3.30% 一致。
+缓存文件已由 billboard 用户重建（00:14:39），EACCES 归零。
+
+### 已知残留（未修，量级小、会自愈）
+美股盘中时，Yahoo 会把**当天未完成的那根**放进日线数组（close = 当前价）。
+若当天正在创新高，`peak250` 会短暂被这个盘中价顶高 → 回撤虚高一点点。
+只在创新高当天出现，收盘后自动归位，暂不处理（要修得判断"这根是不是最终的"，Yahoo 的 chart 接口
+不给 `marketState`，得另想办法）。
+
+---
+
+## 2026-10-10 06:25 — clipimg 贴图收藏夹「收藏进去不显示」修复
+
+### 真凶（日志实锤，不是猜的）
+```
+Oct 09 18:09:36  Error: EACCES: permission denied, open '/opt/billboard/data/clipimg/20261009100936-b34c33.png'
+                 at file:///opt/billboard/src/clipimg-api.js:68:6     ← fs.writeFileSync
+Oct 09 18:09:51  同上  20261009100951-c5c04f.png
+Oct 09 18:10:42  同上  20261009101042-05487f.png
+```
+`data/clipimg/` 是 **root** 建出来的，而 billboard 服务以 `billboard` 用户运行 → 只能读不能写。
+Vic 18:09–18:10 贴的 3 张截图，POST 全部 500，文件一张都没落盘。
+
+**为什么他看到的不是"上传失败"而是"收藏进去了但不显示"**：当时的 `handleFiles()` 在循环里
+`if (!r.ok) { toast('上传失败（' + r.status + '）'); continue; }`，但循环结束后又无条件
+`toast('收藏完成 ✔')` —— **后一句把前一句覆盖掉了**。于是失败被报成成功。
+18:16 的提交（5a4dab1）把这段改成分别统计成功/失败，只是把谎报堵上了，没治根因。
+
+目录属主在 18:15 前后被人手工改回 billboard，所以现在能写；根因没留防护。
+
+### 本轮做的四件事
+
+**1. 启动自检（防复发）** `src/clipimg-api.js` 顶部加 `probeWritable()`：
+启动时往 `data/clipimg/` 写一个 `.write-test` 再删掉，失败就三行大字打到 journal：
+```
+[clipimg] ⚠ 存储目录不可写，粘贴收藏会全部失败：/opt/billboard/data/clipimg
+[clipimg] ⚠ 原因：EACCES: permission denied ...
+[clipimg] ⚠ 修法：chown -R billboard:billboard /opt/billboard/data/clipimg
+```
+这类"root 建了目录、服务写不进去"的坑本站已经踩第二次了（上次是 `drawdown-cache.json`），
+统一由自检在启动时暴露，别等用户第一次用才发现。
+
+**2. 粘贴不再要求"先点进 iframe"（本轮最主要的手感问题）**
+`public/js/modules/clipimg.js` 原来只是个 iframe 壳。iframe 没焦点时，粘贴事件只在外层文档冒泡，
+里面的监听器一个都收不到 —— 用户按 Cmd+V 完全没反应、连提示都没有。
+**真键盘实测**（焦点在外层页面、真实 `Meta+V`）：
+| | 修复前 | 修复后 |
+|---|---|---|
+| 焦点在 iframe 内 | 正常上传 | 正常上传 |
+| 焦点在外层页面 | **零反应**（无请求、无提示） | POST 201，正常显示 |
+
+做法：外层渲染器在 clipimg 这一栏处于前台时挂 `paste` / `drop` 的转发器，
+把图片 File 通过 `postMessage` 送进 iframe；iframe 侧加 `message` 监听调 `handleFiles()`。
+只在这一栏 `active` 时才接管，避免在其他 tab 里把图片吞掉。
+另外顺手加了 `hashchange → refresh`：`mount()` 一辈子只跑一次，若从别处（比如手机）传了新图，
+切回这一栏会重新拉列表，不再显示旧快照。
+
+**3. 失败原因透出** 前端 500 时不再只报状态码，把服务端 `{error}` 里的原因带进 toast；
+API 侧把 POST / DELETE 的落盘包进 try/catch 返回 JSON（以前是 express 的 HTML 错误页），
+并给 `express.raw` 的报错（典型是超 30MB）加了 JSON 错误中间件。
+写文件成功后才动索引，避免出现"有记录没文件 / 有文件没记录"。
+
+**4. 权限兜底** 部署脚本里带 `chown -R billboard:billboard data/` + `chmod 775`，
+`data/clipimg` 目录和 index.json 一并归一。
+
+### 改动清单与备份（`/opt/billboard`）
+| 文件 | 备份 |
+|---|---|
+| `src/clipimg-api.js` | `.bak-paste-20261010-062522` |
+| `public/js/modules/clipimg.js` | `.bak-paste-20261010-062522` |
+| `public/clipimg/index.html` | `.bak-paste-20261010-062522` |
+
+服务端改完 `systemctl restart billboard`；两个前端文件刷新即可。前端模块带 `?v=<mtime>` 版本号，不会被缓存住。
+
+### 验证（浏览器实测，零页面错误）
+- 焦点保持在外层页面 → 真实 `Cmd+V` → `POST /api/clipimg?ext=png` **201**，网格 0→1，
+  显示 1 张 · 共 21 KB，图片实际宽度 1200px（真的解码出来了，不是占位框）
+- 大图路径：2.9MB PNG → canvas 压到 1800px/1.2MB JPEG → 201 → 正常显示
+- 索引一致性：索引条目数 == 磁盘文件数，无孤儿文件、无失效条目
+- 删除：DELETE 全部 200，删完索引回到 `[]`
+- 启动自检：重启后无告警（说明目录可写）
+
+### 顺带
+测试期间上传的 8 张验证图已全部清空，Vic 的收藏夹回到干净的 0 张状态。
+
+### 下次要查这个模块，按顺序看
+1. `journalctl -u billboard | grep -i clipimg` —— 有 EACCES 就是目录属主问题
+2. `stat -c "%U:%G %a" /opt/billboard/data/clipimg` —— 必须是 `billboard:billboard`
+3. `python3` 比对 `index.json` 与目录里的文件名是否一一对应
+4. 前端"粘了没反应"先看焦点：粘贴事件归属于有焦点的那个 document，何况还隔着 iframe

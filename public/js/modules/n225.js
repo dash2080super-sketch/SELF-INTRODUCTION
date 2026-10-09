@@ -3,7 +3,20 @@
    这里不重算任何判定 —— 判定逻辑只在 Python 侧存在一份，避免两边漂移。
 
    结构：决策卡（建议 + 仓位系数）→ 三层判定 → 关键指标 → 最近决策 → 口径说明。
-   颜色沿用本站口径：涨红跌绿（A 股习惯），CSS 变量 --up / --down。 */
+   颜色沿用本站口径：涨红跌绿（A 股习惯），CSS 变量 --up / --down。
+
+   【2026-09-23 修订】
+   - 「刷新」现在是真刷新（后端重跑 Python），加了进行中状态与失败提示。
+   - KOSPI 不再冒充实时：按后端给的 标注/日期 如实展示，非当日时明确标灰。
+   - 页脚显示数据龄，超过 2 小时未更新会变红提醒。
+
+   【2026-09-25 修订】修「刷新永远失败且极慢」
+   - 后端换了数据源（东财 push2/push2his 在境外机房被东财边缘掐连接，v4/v6 都不行）
+     + 净值加磁盘缓存，一次重跑从 ~70s（且必然失败）降到 ~3s。文案里的耗时据此改。
+   - cron 同时修了时区 bug：本机是 Asia/Singapore(+08)=北京时间，旧条目按 UTC 写，
+     实际都在深夜跑。现在 07:30~14:30 共 8 次，东京早盘每半小时一次。
+   - 页脚补了数据源；IOPV 拿不到时显示 —（不参与溢价闸门）。
+*/
 const { esc, toast } = window.Billboard;
 
 let DATA = null;
@@ -29,6 +42,24 @@ function premTone(p) {
   if (p >= 90) return 'down';
   if (p >= 75) return 'warn';
   return 'up';
+}
+
+/* "2026-09-23 09:25" -> 距今多少分钟（按北京时间解析） */
+function ageMinutes(t) {
+  if (!t) return null;
+  const d = new Date(String(t).replace(' ', 'T') + ':00+08:00');
+  if (isNaN(d)) return null;
+  return Math.floor((Date.now() - d.getTime()) / 60000);
+}
+
+function ageText(t) {
+  const m = ageMinutes(t);
+  if (m == null) return '';
+  if (m < 1) return '刚刚';
+  if (m < 60) return `${m} 分钟前`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h} 小时${m % 60 ? (m % 60) + ' 分' : ''}前`;
+  return `${Math.floor(h / 24)} 天前`;
 }
 
 /* ---------------- 片段 ---------------- */
@@ -88,6 +119,12 @@ function metricsHTML() {
   const p = DATA['溢价'];
   const n = DATA['日经225'];
   const o = DATA['隔夜美股'];
+  // KOSPI 新版结构；老 latest.json 没有这个键时降级到旧字段
+  const k = DATA['KOSPI'] || {};
+  const kVal = k['涨跌%'] != null ? k['涨跌%'] : o['KOSPI最新%'];
+  const kLabel = k['标注'] ? `KOSPI（${k['标注']}）` : 'KOSPI（同步）';
+  const kTone = k['是否当日'] === false ? 'flat' : cls(kVal);
+
   const cells = [
     ['ETF 现价', nf(e['现价'], 3), cls(e['今日涨幅%'])],
     ['今日涨幅', pct(e['今日涨幅%']), cls(e['今日涨幅%'])],
@@ -101,21 +138,22 @@ function metricsHTML() {
     ['隔夜英伟达', pct(o['英伟达%']), cls(o['英伟达%'])],
     ['隔夜 VIX', pct(o['VIX%']), cls(o['VIX%'])],
     ['USD/JPY', pct(o['USDJPY%']), cls(o['USDJPY%'])],
-    ['KOSPI（同步）', pct(o['KOSPI最新%']), cls(o['KOSPI最新%'])],
+    [kLabel, pct(kVal) + (k['日期'] ? `<i class="n225-dim"> ${esc(k['日期'].slice(5))}</i>` : ''), kTone],
     ['综合 score', nf(DATA['综合score']), cls(DATA['综合score'])],
   ];
   return `<div class="n225-grid">${cells
-    .map(([k, v, c]) => `<div class="n225-cell"><div class="k">${esc(k)}</div><div class="v ${c}">${esc(v)}</div></div>`)
+    .map(([key, v, c]) => `<div class="n225-cell"><div class="k">${esc(key)}</div><div class="v ${c}">${v}</div></div>`)
     .join('')}</div>`;
 }
 
 function historyHTML() {
   const h = DATA.history || [];
   if (!h.length) return '';
+  const slotName = (s) => ({ am: '早间', pm: '午后', manual: '手动' }[s] || '');
   const body = h
     .map(
       (r) => `<tr>
-        <td>${esc(r.t || '')}</td>
+        <td>${esc(r.t || '')}${r.slot ? `<i class="n225-dim"> ${slotName(r.slot)}</i>` : ''}</td>
         <td class="${actionTone(r.action)}">${esc(r.action || '')}</td>
         <td>${r.size == null ? '—' : nf(r.size)}</td>
         <td>${r.prem == null ? '—' : pct(r.prem)}</td>
@@ -127,7 +165,7 @@ function historyHTML() {
     )
     .join('');
   return `<div class="n225-sec"><h3>最近决策</h3>
-    <div class="n225-hint">每次 cron 跑完追加一条；只记判定，不记成交。</div>
+    <div class="n225-hint">同一时段重复跑会覆盖（早间 / 午后各留最后一条）；只记判定，不记成交。</div>
     <div class="n225-twrap"><table class="n225-table">
       <thead><tr><th>时间(北京)</th><th>建议</th><th>仓位</th><th>溢价</th><th>分位</th><th>回撤</th><th>SOX</th><th>score</th></tr></thead>
       <tbody>${body}</tbody></table></div></div>`;
@@ -141,12 +179,19 @@ function noteHTML() {
           513880 要 9:30 才开盘。实测隔夜 SOX 与「ETF 开盘买→收盘卖」的相关性只有 <b>-0.06</b>，
           所以隔夜信号只用来调节奏，不用来做日内择时。</li>
       <li><b>KOSPI 不是领先指标</b>：韩日同为 UTC+9、同为 9:00 开盘，同日相关 0.668 是同步共振，
-          只能做盘中确认。</li>
+          只能做盘中确认。<b>且开盘前拿到的是昨日收盘</b>，格子里的日期就是它的真实数据日。</li>
       <li><b>溢价率才是真因子</b>：按溢价分位分组，&gt;75 分位时未来 20 日 ETF 收益 <b>-0.87%</b>，
           &lt;75 分位时 <b>+3.55%</b>。所以溢价做成一票否决的硬闸门。</li>
       <li><b>被剔除的因子</b>：英伟达（与 SOX 共线，联合回归 t=0.03）、WTI 原油、美债 10Y。
           汇率对 ETF 的净效应接近 0（利好日经但伤害人民币计价净值，两向抵消）。</li>
       <li>样本 2024-09 ~ 2026-09，约 490 个交易日，且是单边上行期；下跌市里溢价可能长期挂在高位，闸门会一直红灯。</li>
+      <li><b>数据口径</b>：页面数字来自最近一次判定。服务器<b>按北京时间自动重跑</b>：
+          07:30 / 08:00 / 08:30 / 09:00 / 09:25 / 09:30 / 10:00 / 14:30，
+          其中 07:30、09:25、14:30 三次会推 Bark，其余静默更新。
+          点「刷新」会让服务器<b>立刻重跑一次</b>，约 3~8 秒。</li>
+      <li><b>数据源</b>：行情/K线走腾讯（东财 push2/push2his 在境外机房被东财边缘直接掐连接，
+          IPv4/IPv6 都一样），官方净值仍取东财（溢价口径的基准）。<b>IOPV 只有东财能给，现在拿不到，显示 —</b>；
+          溢价闸门走「收盘价 ÷ 官方净值」，不依赖 IOPV，判定不受影响。</li>
     </ul>
   </div>`;
 }
@@ -186,16 +231,36 @@ function render(panel) {
     historyHTML();
 
   const p = DATA['溢价'];
+  const k = DATA['KOSPI'] || {};
+  const q = DATA['数据质量'] || {};
+  const age = ageMinutes(DATA['时间']);
+  const stale = age != null && age > 120;   // 超过 2 小时没更新 → 提醒
   if (foot) {
-    foot.textContent =
-      `判定时间 ${esc(DATA['时间'] || '')}（北京时间）· 溢价口径「${esc(p['来源'] || '')}」` +
-      `，中位 ${pct(p['中位数%'])} / 90 分位 ${pct(p['90分位%'])} · 日经数据日期 ${esc(DATA['日经225']['日期'] || '')}`;
+    foot.innerHTML =
+      `判定时间 ${esc(DATA['时间'] || '')}（北京时间，${esc(ageText(DATA['时间']))}）` +
+      `<b class="${stale ? 'down' : ''}">${stale ? ' ⚠ 数据偏旧，点「刷新」重跑' : ''}</b>` +
+      `<br>溢价口径「${esc(p['来源'] || '')}」中位 ${pct(p['中位数%'])} / 90 分位 ${pct(p['90分位%'])}` +
+      ` · 日经数据日 ${esc(DATA['日经225']['日期'] || '')}` +
+      (q['行情源'] ? ` · 数据源 ${esc(q['行情源'])}/${esc(q['K线源'] || '')}` : '') +
+      (k['日期'] ? ` · KOSPI 数据日 ${esc(k['日期'])}（${esc(k['标注'] || '')}）` : '');
   }
 }
 
 async function load(panel, force) {
   const btn = panel.querySelector('#n225-refresh');
-  if (btn) btn.disabled = true;
+  const body = panel.querySelector('#n225-body');
+  if (btn) {
+    btn.disabled = true;
+    if (force) btn.textContent = '重跑中…';
+  }
+  // 真刷新要跑 Python，慢，先把正在做的事说清楚，别让人以为卡死
+  if (force && DATA && !DATA.error && body) {
+    const tip = document.createElement('div');
+    tip.className = 'n225-refresh-tip';
+    tip.id = 'n225-tip';
+    tip.textContent = '正在让服务器重跑判定（抓取上游行情），约 3~8 秒…';
+    body.parentNode.insertBefore(tip, body);
+  }
   try {
     const r = await fetch('/api/n225' + (force ? '?refresh=1' : ''));
     if (r.status === 401) {
@@ -205,27 +270,34 @@ async function load(panel, force) {
     const j = await r.json();
     DATA = j;
     render(panel);
-    if (force && !j.error) toast('已刷新');
+    if (force) {
+      if (j._refresh && j._refresh.ok === false) toast(j._refresh.msg || '刷新失败');
+      else toast('已重跑判定，数据已更新');
+    }
   } catch (e) {
     if (!DATA) {
-      const body = panel.querySelector('#n225-body');
       if (body) body.innerHTML = `<div class="empty">读取失败：${esc(e.message)}</div>`;
     } else {
       toast('刷新失败：' + e.message);
     }
   } finally {
-    if (btn) btn.disabled = false;
+    const tip = panel.querySelector('#n225-tip');
+    if (tip) tip.remove();
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = '刷新';
+    }
   }
 }
 
 function schedule(panel) {
   clearInterval(poller);
-  // cron 一天只跑两次，5 分钟看一眼足够
+  // cron 一天只跑三次，5 分钟看一眼足够（只读盘，不重跑 Python，很轻）
   poller = setInterval(() => {
     if (document.hidden) return;
     const p = document.querySelector('.panel[data-id="n225"]');
     if (!p || !p.classList.contains('active')) return;
-    load(p, true);
+    load(p, false);
   }, 300_000);
 }
 
@@ -240,7 +312,7 @@ window.Billboard.register('n225', {
       if (document.hidden) return;
       const p = document.querySelector('.panel[data-id="n225"]');
       if (!p || !p.classList.contains('active')) return;
-      load(p, true);
+      load(p, false);
     });
   },
 });

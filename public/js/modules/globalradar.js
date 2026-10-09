@@ -16,13 +16,19 @@ window.Billboard.register('globalradar', {
     frame.setAttribute('loading', 'lazy');
     Object.assign(frame.style, {
       width: '100%',
-      height: 'calc(100vh - 140px)',
-      minHeight: '700px',
+      minHeight: '480px',
       border: '0',
       display: 'block',
       borderRadius: '10px',
       background: '#f6f7f9',
     });
+    // 高度不再写死「100vh - 140px」：移动端 topbar 会折行变高（品牌行 + tab 行约 100px），
+    // 140px 的预留不够；且 iOS Safari 的 100vh 取「地址栏收起」的大视口，会把 iframe 底部顶到地址栏下面。
+    // 按实测 topbar 高度算 + 用 100dvh（动态视口）修正。不支持 dvh 的浏览器会忽略第二行，保留 vh 兜底。
+    // 84 = main 上下 padding(28) + body 底部留白(40) + 余量(16)
+    const reserve = (document.querySelector('.topbar')?.offsetHeight || 56) + 84;
+    frame.style.height = `calc(100vh - ${reserve}px)`;
+    frame.style.height = `calc(100dvh - ${reserve}px)`;
     ctx.panel.appendChild(frame);
   },
 });

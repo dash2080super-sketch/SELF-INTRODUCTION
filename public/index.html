@@ -5,7 +5,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow">
 <title>Billboard</title>
-<script>window.__ASSET_V__='__ASSET_V__';</script>
+<!-- 2026-09-26 删掉了原先那行「内联脚本给 window 上的版本号变量赋值」。
+     原因：服务端是把整份 HTML 做一次 replaceAll(占位符 → 版本号)，连脚本里的变量名一起替换，
+     下发出去变成 window.27dceeaa='27dceeaa' —— 非法标识符，首页直接 SyntaxError。
+     影响不止是控制台报错：那个变量从未被赋值，app.js 只好退回 '0'，
+     于是所有模块都以 ?v=0 加载，改了模块用户也刷不出来（浏览器照旧 URL 命中缓存）。
+     现在版本号改由 app.js 从自己的 script URL 读（见 loadRenderer 里的 import.meta.url），
+     这个内联脚本已无必要。下面两处占位符仍由服务端替换，保留。 -->
 <link rel="stylesheet" href="/css/app.css?v=__ASSET_V__">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='13' font-size='13'>📌</text></svg>">
 </head>

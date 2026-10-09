@@ -85,6 +85,27 @@ window.Billboard = {
 };
 
 /* ---------------- 导航 ---------------- */
+/* tab 栏是横向滚动的（16 个模块一屏放不下），下面两件事是 2026-09-26 补的：
+   1) syncTabsEdge —— 维护 can-l / can-r 两个 class，渐隐遮罩只在「那一侧还有内容」时出现。
+      在这之前右边没有任何提示，等于把 14 个 tab 藏起来了。
+   2) focusTab —— 切模块时把当前 tab 滚进视野。从 URL hash 直接进来时
+      active tab 可能在屏外，不滚的话看不出当前在哪。 */
+function syncTabsEdge() {
+  const t = $('#tabs');
+  if (!t) return;
+  const max = t.scrollWidth - t.clientWidth;
+  t.classList.toggle('can-l', t.scrollLeft > 2);
+  t.classList.toggle('can-r', t.scrollLeft < max - 2);
+}
+
+function focusTab(id) {
+  const at = document.querySelector(`.tab[data-id="${id}"]`);
+  if (!at) return;
+  // block:'nearest' —— 垂直方向已经可见就不要动，避免把整页也滚走
+  at.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' });
+  syncTabsEdge();
+}
+
 function buildTabs() {
   const tabs = $('#tabs');
   tabs.innerHTML = '';
@@ -94,13 +115,19 @@ function buildTabs() {
     b.onclick = () => switchTo(m.id);
     tabs.appendChild(b);
   }
+  tabs.addEventListener('scroll', syncTabsEdge, { passive: true });
+  window.addEventListener('resize', syncTabsEdge);
+  requestAnimationFrame(syncTabsEdge);
 }
 
 async function loadRenderer(id) {
   if (renderers.has(id)) return renderers.get(id);
   try {
-    // 带上资源版本号，避免浏览器缓存住旧模块（版本由服务端按 public/ 的 mtime 算）
-    const v = window.__ASSET_V__ || '0';
+    // 带上资源版本号，避免浏览器缓存住旧模块（版本由服务端按 public/ 的 mtime 算）。
+    // 版本号从 app.js 自己的 script URL 里读：首页原本有个内联脚本赋值 window.__ASSET_V__，
+    // 但服务端是整份 HTML replaceAll，会把变量名也替换成 window.27dceeaa=... 直接语法错误，
+    // 导致这里永远拿到 fallback '0' —— 模块改动用户刷不出来。别再改回去。
+    const v = new URL(import.meta.url).searchParams.get('v') || '0';
     await import(`/js/modules/${id}.js?v=${v}`);
   } catch (e) {
     console.warn(`模块 ${id} 没有前端渲染器，使用默认`, e);
@@ -113,6 +140,7 @@ async function switchTo(id) {
   document.querySelectorAll('.tab').forEach((t) => t.classList.toggle('active', t.dataset.id === id));
   document.querySelectorAll('.panel').forEach((p) => p.classList.toggle('active', p.dataset.id === id));
   location.hash = id;
+  focusTab(id);   // tab 栏可横滚，不定位的话切过去的 tab 可能停在屏外
 
   const panel = document.querySelector(`.panel[data-id="${id}"]`);
   if (panel.dataset.ready) return;
